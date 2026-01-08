@@ -12,7 +12,9 @@ export interface Challenge {
   finalPrice: number;
   productImage: string;
   productLink: string;
-  status: "draft" | "published";
+  detailImage: string;
+  status: "draft" | "published" | "deleted";
+  createdBy?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -43,6 +45,7 @@ export interface ChallengeInput {
   finalPrice: number;
   productImage: string;
   productLink: string;
+  detailImage: string;
   status: "draft" | "published";
 }
 

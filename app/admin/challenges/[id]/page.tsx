@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Save, Upload, X, ExternalLink } from "lucide-react";
+import { ArrowLeft, Save, X, ExternalLink, Loader2, LinkIcon, ImageIcon } from "lucide-react";
 import Link from "next/link";
 import { ChallengeWithMissions } from "@/lib/types";
 
@@ -15,11 +15,13 @@ export default function EditChallengePage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState<string | null>(null);
+  const [fetchingImage, setFetchingImage] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     platform: "",
     title: "",
+    hasSpecificOption: false,
     option: "",
     purchaseTimeLimit: "",
     originalPrice: 0,
@@ -28,7 +30,8 @@ export default function EditChallengePage() {
     finalPrice: 0,
     productImage: "",
     productLink: "",
-    status: "draft" as "draft" | "published",
+    detailImage: "",
+    status: "draft" as "draft" | "published" | "deleted",
     purchaseExampleImage: "",
     reviewExampleImage: "",
   });
@@ -56,6 +59,7 @@ export default function EditChallengePage() {
       setForm({
         platform: data.platform,
         title: data.title,
+        hasSpecificOption: !!data.option,
         option: data.option,
         purchaseTimeLimit: data.purchaseTimeLimit,
         originalPrice: data.originalPrice,
@@ -64,6 +68,7 @@ export default function EditChallengePage() {
         finalPrice: data.finalPrice,
         productImage: data.productImage,
         productLink: data.productLink,
+        detailImage: data.detailImage || "",
         status: data.status,
         purchaseExampleImage: data.missions[0]?.exampleImage || "",
         reviewExampleImage: data.missions[1]?.exampleImage || "",
@@ -83,44 +88,81 @@ export default function EditChallengePage() {
     setForm((prev) => ({ ...prev, paybackAmount, finalPrice }));
   }, [form.originalPrice, form.paybackRate]);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // 제품 링크에서 이미지 자동 가져오기
+  const fetchImageFromUrl = async () => {
+    if (!form.productLink) {
+      setImageError("제품 링크를 먼저 입력해주세요");
+      return;
+    }
 
-    setUploading(field);
-    const formData = new FormData();
-    formData.append("file", file);
+    setFetchingImage(true);
+    setImageError(null);
 
     try {
-      const res = await fetch("/api/upload", {
+      const res = await fetch("/api/fetch-image", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: form.productLink }),
       });
       const data = await res.json();
-      if (data.url) {
-        setForm((prev) => ({ ...prev, [field]: data.url }));
+
+      if (data.imageUrl) {
+        setForm((prev) => ({ ...prev, productImage: data.imageUrl }));
+      } else {
+        setImageError(data.error || "이미지를 찾을 수 없습니다. 직접 URL을 입력해주세요.");
       }
     } catch (error) {
-      console.error("Upload failed:", error);
-      alert("이미지 업로드에 실패했습니다");
+      console.error("Fetch image failed:", error);
+      setImageError("이미지 가져오기 실패. 직접 URL을 입력해주세요.");
     } finally {
-      setUploading(null);
+      setFetchingImage(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // 필수 필드 검증
+  const validateForm = (): string | null => {
+    if (!form.platform.trim()) return "플랫폼을 입력해주세요";
+    if (!form.title.trim()) return "제목을 입력해주세요";
+    if (!form.purchaseTimeLimit) return "구매 기한을 입력해주세요";
+    if (!form.originalPrice || form.originalPrice <= 0) return "구매가를 입력해주세요";
+    if (!form.paybackRate || form.paybackRate <= 0) return "페이백 비율을 입력해주세요";
+    if (!form.productLink.trim()) return "제품 링크를 입력해주세요";
+    if (form.hasSpecificOption && !form.option.trim()) return "옵션을 입력하거나 옵션 지정을 해제해주세요";
+    return null;
+  };
+
+  const handleSave = async (status: "draft" | "published", openPreview = false) => {
+    // 게시할 때만 필수 필드 검증
+    if (status === "published") {
+      const error = validateForm();
+      if (error) {
+        alert(error);
+        return;
+      }
+    }
+
     setSaving(true);
 
     try {
+      // hasSpecificOption이 false면 option을 빈 문자열로
+      const dataToSave = {
+        ...form,
+        option: form.hasSpecificOption ? form.option : "",
+        status,
+      };
+
       const res = await fetch(`/api/challenges/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(dataToSave),
       });
 
       if (res.ok) {
-        alert("저장되었습니다");
+        setForm((prev) => ({ ...prev, status }));
+        if (openPreview) {
+          window.open(`/challenge/${id}`, "_blank");
+        }
+        alert(status === "published" ? "게시되었습니다" : "저장되었습니다");
       } else {
         alert("저장에 실패했습니다");
       }
@@ -131,6 +173,10 @@ export default function EditChallengePage() {
       setSaving(false);
     }
   };
+
+  const challengeUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/challenge/${id}`
+    : `/challenge/${id}`;
 
   if (status === "loading" || loading) {
     return (
@@ -166,7 +212,7 @@ export default function EditChallengePage() {
 
       {/* 폼 */}
       <main className="max-w-4xl mx-auto px-4 py-8">
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form className="space-y-6">
           {/* 기본 정보 */}
           <section className="bg-white rounded-lg p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">기본 정보</h2>
@@ -189,10 +235,9 @@ export default function EditChallengePage() {
                   구매 기한 *
                 </label>
                 <input
-                  type="text"
+                  type="date"
                   value={form.purchaseTimeLimit}
                   onChange={(e) => setForm({ ...form, purchaseTimeLimit: e.target.value })}
-                  placeholder="예: 1/8 하루 동안"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   required
                 />
@@ -211,17 +256,33 @@ export default function EditChallengePage() {
                 />
               </div>
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  옵션 정보 *
-                </label>
-                <input
-                  type="text"
-                  value={form.option}
-                  onChange={(e) => setForm({ ...form, option: e.target.value })}
-                  placeholder="예: 특품(24~30입) *1개"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  required
-                />
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700">특정 옵션만 페이백 대상</span>
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, hasSpecificOption: !form.hasSpecificOption })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      form.hasSpecificOption ? "bg-orange-500" : "bg-gray-300"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        form.hasSpecificOption ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+                {form.hasSpecificOption ? (
+                  <textarea
+                    value={form.option}
+                    onChange={(e) => setForm({ ...form, option: e.target.value })}
+                    placeholder="페이백 대상 옵션을 입력하세요&#10;예: 특품(24~30입) *1개"
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  />
+                ) : (
+                  <p className="text-sm text-gray-500">모든 옵션이 페이백 대상입니다</p>
+                )}
               </div>
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -273,18 +334,18 @@ export default function EditChallengePage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  페이백 금액 (자동계산)
-                </label>
-                <div className="px-3 py-2 bg-gray-100 rounded-lg text-orange-500 font-medium">
-                  {form.paybackAmount.toLocaleString()}원
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
                   실구매가 (자동계산)
                 </label>
                 <div className="px-3 py-2 bg-gray-100 rounded-lg font-medium">
                   {form.finalPrice.toLocaleString()}원
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  페이백 금액 (자동계산)
+                </label>
+                <div className="px-3 py-2 bg-gray-100 rounded-lg text-orange-500 font-medium">
+                  {form.paybackAmount.toLocaleString()}원
                 </div>
               </div>
             </div>
@@ -292,121 +353,136 @@ export default function EditChallengePage() {
 
           {/* 이미지 */}
           <section className="bg-white rounded-lg p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">이미지</h2>
-            <div className="grid grid-cols-3 gap-4">
-              {/* 제품 이미지 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  제품 이미지
-                </label>
-                <ImageUploader
-                  value={form.productImage}
-                  onChange={(url) => setForm({ ...form, productImage: url })}
-                  onUpload={(e) => handleImageUpload(e, "productImage")}
-                  uploading={uploading === "productImage"}
-                />
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">제품 이미지</h2>
+
+            {/* 이미지 미리보기 */}
+            {form.productImage && (
+              <div className="mb-4 relative inline-block">
+                <div className="w-48 h-48 bg-gray-100 rounded-lg overflow-hidden">
+                  <img
+                    src={form.productImage}
+                    alt="제품 이미지"
+                    className="w-full h-full object-cover"
+                    onError={() => setImageError("이미지를 불러올 수 없습니다")}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, productImage: "" })}
+                  className="absolute -top-2 -right-2 p-1 bg-red-500 rounded-full text-white hover:bg-red-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              {/* 구매 인증 예시 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  구매 인증 예시
-                </label>
-                <ImageUploader
-                  value={form.purchaseExampleImage}
-                  onChange={(url) => setForm({ ...form, purchaseExampleImage: url })}
-                  onUpload={(e) => handleImageUpload(e, "purchaseExampleImage")}
-                  uploading={uploading === "purchaseExampleImage"}
-                />
+            )}
+
+            {/* 이미지 가져오기 버튼 */}
+            {!form.productImage && (
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={fetchImageFromUrl}
+                  disabled={fetchingImage || !form.productLink}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {fetchingImage ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      이미지 가져오는 중...
+                    </>
+                  ) : (
+                    <>
+                      <LinkIcon className="w-4 h-4" />
+                      제품 링크에서 이미지 가져오기
+                    </>
+                  )}
+                </button>
+                <p className="text-xs text-gray-500">
+                  제품 링크를 먼저 입력한 후 버튼을 클릭하세요
+                </p>
               </div>
-              {/* 리뷰 인증 예시 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  리뷰 인증 예시
-                </label>
-                <ImageUploader
-                  value={form.reviewExampleImage}
-                  onChange={(url) => setForm({ ...form, reviewExampleImage: url })}
-                  onUpload={(e) => handleImageUpload(e, "reviewExampleImage")}
-                  uploading={uploading === "reviewExampleImage"}
-                />
+            )}
+
+            {/* 에러 메시지 */}
+            {imageError && (
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{imageError}</p>
               </div>
+            )}
+
+            {/* 직접 URL 입력 */}
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                <ImageIcon className="w-4 h-4" />
+                직접 이미지 URL 입력
+              </label>
+              <input
+                type="url"
+                value={form.productImage}
+                onChange={(e) => {
+                  setForm({ ...form, productImage: e.target.value });
+                  setImageError(null);
+                }}
+                placeholder="https://example.com/image.jpg"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                자동으로 가져오기가 안 될 경우 이미지 URL을 직접 입력해주세요
+              </p>
             </div>
           </section>
 
+          {/* 챌린지 URL (게시된 경우) */}
+          {form.status === "published" && (
+            <section className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-green-800 mb-1">게시된 챌린지 URL</p>
+                  <p className="text-sm text-green-700 truncate">{challengeUrl}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(challengeUrl);
+                    alert("URL이 복사되었습니다!");
+                  }}
+                  className="flex-shrink-0 px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  복사
+                </button>
+              </div>
+            </section>
+          )}
+
           {/* 저장 버튼 */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.status === "published"}
-                  onChange={(e) =>
-                    setForm({ ...form, status: e.target.checked ? "published" : "draft" })
-                  }
-                  className="w-4 h-4 text-orange-500 rounded"
-                />
-                <span className="text-sm text-gray-700">게시</span>
-              </label>
-            </div>
+          <div className="flex items-center justify-end gap-2">
             <button
-              type="submit"
+              type="button"
+              onClick={() => handleSave("draft")}
               disabled={saving}
-              className="flex items-center gap-2 px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50"
+              className="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 text-sm whitespace-nowrap"
             >
-              <Save className="w-4 h-4" />
-              {saving ? "저장 중..." : "저장"}
+              임시저장
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSave(form.status === "deleted" ? "draft" : form.status, true)}
+              disabled={saving}
+              className="px-3 py-2 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 text-sm whitespace-nowrap"
+            >
+              저장 후 미리보기
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSave("published")}
+              disabled={saving}
+              className="px-3 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50 text-sm whitespace-nowrap"
+            >
+              저장 후 게시
             </button>
           </div>
         </form>
       </main>
-    </div>
-  );
-}
-
-// 이미지 업로더 컴포넌트
-function ImageUploader({
-  value,
-  onChange,
-  onUpload,
-  uploading,
-}: {
-  value: string;
-  onChange: (url: string) => void;
-  onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  uploading: boolean;
-}) {
-  return (
-    <div className="relative">
-      {value ? (
-        <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
-          <img src={value} alt="" className="w-full h-full object-cover" />
-          <button
-            type="button"
-            onClick={() => onChange("")}
-            className="absolute top-2 right-2 p-1 bg-black/50 rounded-full text-white hover:bg-black/70"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      ) : (
-        <label className="flex flex-col items-center justify-center aspect-square bg-gray-100 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors">
-          {uploading ? (
-            <div className="text-gray-400 text-sm">업로드 중...</div>
-          ) : (
-            <>
-              <Upload className="w-8 h-8 text-gray-400 mb-2" />
-              <span className="text-sm text-gray-400">이미지 업로드</span>
-            </>
-          )}
-          <input
-            type="file"
-            accept="image/*"
-            onChange={onUpload}
-            className="hidden"
-            disabled={uploading}
-          />
-        </label>
-      )}
     </div>
   );
 }

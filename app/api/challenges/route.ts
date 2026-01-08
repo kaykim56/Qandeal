@@ -26,7 +26,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body: ChallengeInput = await request.json();
-    const id = await createChallenge(body);
+    const createdBy = session.user?.email || "";
+    const id = await createChallenge(body, createdBy);
 
     return NextResponse.json({ id }, { status: 201 });
   } catch (error) {

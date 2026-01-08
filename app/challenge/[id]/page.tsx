@@ -41,7 +41,8 @@ export default async function ChallengeDetailPage({ params }: PageProps) {
       paybackAmount: 12000,
       finalPrice: 18000,
       productImage: "",
-      productLink: "#",
+      productLink: "https://gift.kakao.com/product/11944600",
+      detailImage: "",
       status: "published" as const,
       createdAt: "",
       updatedAt: "",
@@ -122,7 +123,9 @@ export default async function ChallengeDetailPage({ params }: PageProps) {
 
         <h1 className="text-lg font-bold text-gray-900 mb-2">{challenge.title}</h1>
 
-        <p className="text-sm text-gray-500 mb-4">옵션 지정 | {challenge.option}</p>
+        {challenge.option && (
+          <p className="text-sm text-gray-500 mb-4">옵션 지정 | {challenge.option}</p>
+        )}
 
         {/* 가격 정보 테이블 */}
         <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -172,22 +175,6 @@ export default async function ChallengeDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* 버튼 그룹 */}
-        <div className="flex gap-3 mt-4">
-          <Link
-            href={challenge.productLink || "#"}
-            target="_blank"
-            className="flex-1 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors text-center"
-          >
-            제품 바로가기
-          </Link>
-          <button
-            className="flex-1 py-3 rounded-lg text-sm font-medium text-white transition-colors"
-            style={{ backgroundColor: "#ff6600" }}
-          >
-            참가하기
-          </button>
-        </div>
       </section>
 
       {/* 미션 섹션 */}
@@ -196,6 +183,20 @@ export default async function ChallengeDetailPage({ params }: PageProps) {
           <MissionCard key={mission.id} mission={mission} index={index + 1} />
         ))}
       </section>
+
+      {/* 상품 상세 이미지 */}
+      {challenge.detailImage && (
+        <section className="mt-2 bg-white">
+          <div className="px-4 py-5">
+            <h3 className="text-base font-semibold text-gray-900 mb-3">상품 상세 정보</h3>
+            <img
+              src={challenge.detailImage}
+              alt="상품 상세"
+              className="w-full rounded-lg"
+            />
+          </div>
+        </section>
+      )}
 
       {/* 하단 고정 CTA */}
       <footer className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-gray-200 px-4 py-3 z-20">
@@ -266,9 +267,9 @@ function MissionCard({ mission, index }: MissionCardProps) {
       </div>
 
       {/* 예시 이미지 영역 */}
-      <div className="mt-4 ml-9">
+      <div className="mt-4 ml-9 flex justify-center">
         <div
-          className="relative bg-gray-200 rounded-xl flex items-center justify-center overflow-hidden"
+          className="relative bg-gray-200 rounded-xl flex items-center justify-center overflow-hidden w-[160px]"
           style={{ aspectRatio: "9/16" }}
         >
           {mission.exampleImage ? (
@@ -278,16 +279,16 @@ function MissionCard({ mission, index }: MissionCardProps) {
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="text-gray-400 text-sm">스크린샷 예시</div>
+            <div className="text-gray-400 text-xs">스크린샷 예시</div>
           )}
 
           {/* 우측 하단 라벨 */}
           <div
-            className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg text-white text-xs font-medium flex items-center gap-1.5"
+            className="absolute bottom-2 right-2 px-2 py-1 rounded-lg text-white text-[10px] font-medium flex items-center gap-1"
             style={{ backgroundColor: "rgba(255, 102, 0, 0.9)" }}
           >
             <span>📷</span>
-            <span>인증샷 예시</span>
+            <span>예시</span>
           </div>
         </div>
       </div>

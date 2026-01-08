@@ -27,7 +27,7 @@ export async function getAllChallenges(): Promise<Challenge[]> {
   const sheets = getSheets();
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: "challenges!A2:N",
+    range: "challenges!A2:P",
   });
 
   const rows = response.data.values || [];
@@ -40,7 +40,7 @@ export async function getChallengeById(id: string): Promise<ChallengeWithMission
   // 챌린지 데이터 가져오기
   const challengeResponse = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: "challenges!A2:N",
+    range: "challenges!A2:P",
   });
 
   const rows = challengeResponse.data.values || [];
@@ -63,7 +63,7 @@ export async function getChallengeById(id: string): Promise<ChallengeWithMission
   return { ...challenge, missions };
 }
 
-export async function createChallenge(input: ChallengeInput): Promise<string> {
+export async function createChallenge(input: ChallengeInput, createdBy?: string): Promise<string> {
   const sheets = getSheets();
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
@@ -80,14 +80,16 @@ export async function createChallenge(input: ChallengeInput): Promise<string> {
     input.finalPrice,
     input.productImage,
     input.productLink,
+    input.detailImage || "",
     input.status,
     now,
     now,
+    createdBy || "",
   ];
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: SHEET_ID,
-    range: "challenges!A:N",
+    range: "challenges!A:P",
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [row] },
   });
@@ -116,7 +118,7 @@ export async function updateChallenge(id: string, input: Partial<ChallengeInput>
   // 기존 데이터 찾기
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: "challenges!A2:N",
+    range: "challenges!A2:P",
   });
 
   const rows = response.data.values || [];
@@ -138,6 +140,7 @@ export async function updateChallenge(id: string, input: Partial<ChallengeInput>
     updated.finalPrice,
     updated.productImage,
     updated.productLink,
+    updated.detailImage || "",
     updated.status,
     updated.createdAt,
     updated.updatedAt,
@@ -145,7 +148,7 @@ export async function updateChallenge(id: string, input: Partial<ChallengeInput>
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: SHEET_ID,
-    range: `challenges!A${rowIndex + 2}:N${rowIndex + 2}`,
+    range: `challenges!A${rowIndex + 2}:O${rowIndex + 2}`,
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [row] },
   });
@@ -159,7 +162,7 @@ export async function deleteChallenge(id: string): Promise<boolean> {
   // 챌린지 행 찾기
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: "challenges!A2:N",
+    range: "challenges!A2:P",
   });
 
   const rows = response.data.values || [];
@@ -170,7 +173,7 @@ export async function deleteChallenge(id: string): Promise<boolean> {
   // 실제로는 spreadsheetId의 sheetId를 알아야 하므로 간단히 status를 deleted로 변경
   await sheets.spreadsheets.values.update({
     spreadsheetId: SHEET_ID,
-    range: `challenges!L${rowIndex + 2}`,
+    range: `challenges!M${rowIndex + 2}`,
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [["deleted"]] },
   });
@@ -234,9 +237,11 @@ function rowToChallenge(row: string[]): Challenge {
     finalPrice: Number(row[8]) || 0,
     productImage: row[9] || "",
     productLink: row[10] || "",
-    status: (row[11] as "draft" | "published") || "draft",
-    createdAt: row[12] || "",
-    updatedAt: row[13] || "",
+    detailImage: row[11] || "",
+    status: (row[12] as "draft" | "published") || "draft",
+    createdAt: row[13] || "",
+    updatedAt: row[14] || "",
+    createdBy: row[15] || "",
   };
 }
 
