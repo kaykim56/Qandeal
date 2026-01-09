@@ -298,24 +298,37 @@ export async function updateParticipationImage(
 ): Promise<boolean> {
   const sheets = getSheets();
 
+  console.log(`[updateParticipationImage] participationId: ${participationId}, stepType: ${stepType}`);
+
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
     range: "participations!A2:I",
   });
 
   const rows = response.data.values || [];
+  console.log(`[updateParticipationImage] Found ${rows.length} rows in sheet`);
+
   const rowIndex = rows.findIndex((r) => r[0] === participationId);
-  if (rowIndex === -1) return false;
+  console.log(`[updateParticipationImage] Row index for participationId: ${rowIndex}`);
+
+  if (rowIndex === -1) {
+    console.error(`[updateParticipationImage] participationId not found: ${participationId}`);
+    return false;
+  }
 
   const column = stepType === "purchase" ? "D" : "E";
+  const sheetRow = rowIndex + 2; // +2 because A2 starts at index 0
+
+  console.log(`[updateParticipationImage] Updating column ${column}, row ${sheetRow}`);
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: SHEET_ID,
-    range: `participations!${column}${rowIndex + 2}`,
+    range: `participations!${column}${sheetRow}`,
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [[imageUrl]] },
   });
 
+  console.log(`[updateParticipationImage] Successfully updated ${stepType} image`);
   return true;
 }
 
@@ -345,6 +358,8 @@ export async function updateParticipationStatus(
 ): Promise<boolean> {
   const sheets = getSheets();
 
+  console.log(`[updateParticipationStatus] id: ${id}, status: ${status}`);
+
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
     range: "participations!A2:I",
@@ -352,17 +367,29 @@ export async function updateParticipationStatus(
 
   const rows = response.data.values || [];
   const rowIndex = rows.findIndex((r) => r[0] === id);
-  if (rowIndex === -1) return false;
+
+  console.log(`[updateParticipationStatus] Row index: ${rowIndex}`);
+
+  if (rowIndex === -1) {
+    console.error(`[updateParticipationStatus] Participation not found: ${id}`);
+    return false;
+  }
 
   const now = new Date().toISOString();
+  const sheetRow = rowIndex + 2;
+
+  // F열(status), G열(createdAt 유지), H열(reviewedAt), I열(reviewedBy)
+  // 기존 createdAt 값 유지
+  const existingCreatedAt = rows[rowIndex][6] || now;
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: SHEET_ID,
-    range: `participations!F${rowIndex + 2}:I${rowIndex + 2}`,
+    range: `participations!F${sheetRow}:I${sheetRow}`,
     valueInputOption: "USER_ENTERED",
-    requestBody: { values: [[status, now, reviewedBy]] },
+    requestBody: { values: [[status, existingCreatedAt, now, reviewedBy]] },
   });
 
+  console.log(`[updateParticipationStatus] Successfully updated status to ${status}`);
   return true;
 }
 
