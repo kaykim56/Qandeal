@@ -239,12 +239,14 @@ export interface Participation {
   createdAt: string;
   reviewedAt?: string;
   reviewedBy?: string;
+  testerEmail?: string; // 어드민 테스트 참여 시 이메일 저장
 }
 
 // 참여 생성 (참가하기 버튼 클릭 시)
 export async function createParticipation(data: {
   challengeId: string;
   userId: string;
+  testerEmail?: string; // 어드민 테스트 시 이메일
 }): Promise<string> {
   const sheets = getSheets();
   const id = crypto.randomUUID();
@@ -260,11 +262,12 @@ export async function createParticipation(data: {
     now, // createdAt
     "", // reviewedAt
     "", // reviewedBy
+    data.testerEmail || "", // testerEmail (J열)
   ];
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: SHEET_ID,
-    range: "participations!A:I",
+    range: "participations!A:J",
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [row] },
   });
@@ -280,7 +283,7 @@ export async function getParticipation(
   const sheets = getSheets();
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: "participations!A2:I",
+    range: "participations!A2:J",
   });
 
   const rows = response.data.values || [];
@@ -302,7 +305,7 @@ export async function updateParticipationImage(
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: "participations!A2:I",
+    range: "participations!A2:J",
   });
 
   const rows = response.data.values || [];
@@ -338,7 +341,7 @@ export async function getAllParticipations(): Promise<Participation[]> {
     const sheets = getSheets();
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: "participations!A2:I",
+      range: "participations!A2:J",
     });
 
     const rows = response.data.values || [];
@@ -362,7 +365,7 @@ export async function updateParticipationStatus(
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: "participations!A2:I",
+    range: "participations!A2:J",
   });
 
   const rows = response.data.values || [];
@@ -404,6 +407,7 @@ function rowToParticipation(row: string[]): Participation {
     createdAt: row[6] || "",
     reviewedAt: row[7] || undefined,
     reviewedBy: row[8] || undefined,
+    testerEmail: row[9] || undefined,
   };
 }
 

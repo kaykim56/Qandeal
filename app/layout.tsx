@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import Providers from "@/components/Providers";
 
 export const metadata: Metadata = {
   title: "QANDA 챌린지 - 90% 페이백",
@@ -22,11 +23,13 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className="font-sans antialiased bg-gray-100 min-h-screen">
-        <div className="flex justify-center min-h-screen">
-          <div className="w-full max-w-[430px] bg-white shadow-xl relative">
-            {children}
+        <Providers>
+          <div className="flex justify-center min-h-screen">
+            <div className="w-full max-w-[430px] bg-white shadow-xl relative">
+              {children}
+            </div>
           </div>
-        </div>
+        </Providers>
       </body>
     </html>
   );

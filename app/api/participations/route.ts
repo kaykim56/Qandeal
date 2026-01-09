@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 // POST /api/participations - 참가하기
 export async function POST(request: Request) {
   try {
-    const { challengeId, userId } = await request.json();
+    const { challengeId, userId, testerEmail } = await request.json();
 
     if (!challengeId || !userId) {
       return NextResponse.json(
@@ -54,7 +54,11 @@ export async function POST(request: Request) {
     }
 
     // 새 참여 생성
-    const participationId = await createParticipation({ challengeId, userId });
+    const participationId = await createParticipation({
+      challengeId,
+      userId,
+      testerEmail, // 어드민 테스트 시 이메일
+    });
 
     return NextResponse.json({
       success: true,

@@ -14,6 +14,7 @@ interface Participation {
   createdAt: string;
   reviewedAt?: string;
   reviewedBy?: string;
+  testerEmail?: string;
   challenge?: {
     title: string;
     platform: string;
@@ -221,9 +222,16 @@ export default function VerificationsPage() {
                           </div>
                         )}
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm text-gray-500">
-                            {p.userId.slice(0, 12)}...
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-500">
+                              {p.testerEmail ? p.testerEmail.split("@")[0] : `${p.userId.slice(0, 12)}...`}
+                            </span>
+                            {p.testerEmail && (
+                              <span className="px-1.5 py-0.5 text-[10px] rounded bg-purple-100 text-purple-700 font-medium">
+                                테스트
+                              </span>
+                            )}
+                          </div>
                           {getStatusBadge(p.status)}
                         </div>
                         <p className="text-xs text-gray-400 mb-3">
@@ -330,9 +338,16 @@ export default function VerificationsPage() {
                           )}
                         </div>
                       </div>
-                      <p className="text-xs text-gray-500 truncate">
-                        {p.userId.slice(0, 12)}...
-                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs text-gray-500 truncate">
+                          {p.testerEmail ? p.testerEmail.split("@")[0] : `${p.userId.slice(0, 12)}...`}
+                        </p>
+                        {p.testerEmail && (
+                          <span className="px-1 py-0.5 text-[9px] rounded bg-purple-100 text-purple-700 font-medium">
+                            테스트
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-gray-400">
                         {formatDate(p.createdAt)}
                       </p>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { Info, Clock } from "lucide-react";
 import MissionSteps, { Step } from "./MissionSteps";
 import ParticipateModal from "./ParticipateModal";
@@ -45,6 +46,7 @@ function formatDeadline(dateString: string): string {
 }
 
 export default function ChallengeContent({ challenge }: ChallengeContentProps) {
+  const { data: session } = useSession();
   const [hasParticipated, setHasParticipated] = useState(false);
   const [participationId, setParticipationId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -129,7 +131,11 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
       const res = await fetch("/api/participations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ challengeId: challenge.id, userId }),
+        body: JSON.stringify({
+          challengeId: challenge.id,
+          userId,
+          testerEmail: session?.user?.email || undefined, // 어드민 로그인 시 이메일 전달
+        }),
       });
 
       const data = await res.json();

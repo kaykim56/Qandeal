@@ -38,15 +38,29 @@ export async function GET() {
     });
     const participationRows = participationsRes.data.values || [];
 
+    // 상태별 개수 세기 (정확한 값 확인)
+    const statusCounts: Record<string, number> = {};
+    challengeRows.forEach((r) => {
+      const status = r[12] || "(empty)";
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+    });
+
     // 진단 결과
     const diagnosis = {
       challenges: {
         total: challengeRows.length,
+        statusBreakdown: statusCounts,
         published: challengeRows.filter((r) => r[12] === "published").length,
         draft: challengeRows.filter((r) => r[12] === "draft").length,
         deleted: challengeRows.filter((r) => r[12] === "deleted").length,
         noId: challengeRows.filter((r) => !r[0]).length,
         duplicateIds: [] as string[],
+        // 모든 챌린지 요약 (ID, 제목, 상태)
+        list: challengeRows.map((r) => ({
+          id: r[0],
+          title: r[2]?.substring(0, 30) || "(no title)",
+          status: r[12] || "(empty)",
+        })),
       },
       participations: {
         total: participationRows.length,
@@ -144,6 +158,42 @@ export async function POST(request: Request) {
       });
     }
 
+    if (action === "remove-unpublished-challenges") {
+      // published가 아닌 챌린지 모두 삭제 (draft, empty, etc.)
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId: SHEET_ID,
+        range: "challenges!A2:R",
+      });
+      const rows = res.data.values || [];
+
+      const publishedRows = rows.filter((r) => r[12] === "published");
+      const removedCount = rows.length - publishedRows.length;
+
+      if (removedCount === 0) {
+        return NextResponse.json({ success: true, message: "삭제할 항목이 없습니다" });
+      }
+
+      // 클리어 후 다시 쓰기
+      await sheets.spreadsheets.values.clear({
+        spreadsheetId: SHEET_ID,
+        range: "challenges!A2:R",
+      });
+
+      if (publishedRows.length > 0) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: SHEET_ID,
+          range: "challenges!A2:R",
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: publishedRows },
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: `${removedCount}개의 미게시 챌린지를 정리했습니다 (게시된 ${publishedRows.length}개 유지)`,
+      });
+    }
+
     if (action === "remove-duplicate-participations") {
       // 중복 참여 정리 (같은 challengeId+userId 중 가장 최신 것만 유지)
       const res = await sheets.spreadsheets.values.get({
@@ -210,7 +260,14 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { error: "유효하지 않은 action입니다. 'remove-deleted-challenges' 또는 'remove-duplicate-participations'" },
+      {
+        error: "유효하지 않은 action입니다",
+        availableActions: [
+          "remove-deleted-challenges",
+          "remove-unpublished-challenges",
+          "remove-duplicate-participations"
+        ]
+      },
       { status: 400 }
     );
   } catch (error) {
