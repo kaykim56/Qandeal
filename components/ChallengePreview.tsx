@@ -7,22 +7,35 @@ interface ChallengePreviewProps {
     platform: string;
     title: string;
     option: string;
-    purchaseTimeLimit: string;
+    purchaseDeadline: string;
     originalPrice: number;
     paybackRate: number;
     paybackAmount: number;
     finalPrice: number;
     productImage: string;
     productLink: string;
+    detailImages?: string[];
   };
 }
 
 export default function ChallengePreview({ data }: ChallengePreviewProps) {
   // 날짜 포맷
-  const formatDate = (dateStr: string) => {
+  const formatDeadline = (dateStr: string) => {
     if (!dateStr) return "미정";
-    const date = new Date(dateStr);
-    return `${date.getMonth() + 1}/${date.getDate()} 하루 동안`;
+    try {
+      const date = new Date(dateStr);
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      const hours = date.getHours();
+      const minutes = date.getMinutes();
+
+      if (hours === 23 && minutes === 59) {
+        return `${month}/${day} 자정까지`;
+      }
+      return `${month}/${day} ${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}까지`;
+    } catch {
+      return "미정";
+    }
   };
 
   return (
@@ -77,10 +90,10 @@ export default function ChallengePreview({ data }: ChallengePreviewProps) {
             <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
               <span className="text-sm text-gray-600 flex items-center gap-1">
                 <Clock className="w-4 h-4" />
-                구매 시간
+                구매 인증 기한
               </span>
               <span className="text-sm font-medium text-gray-900">
-                {formatDate(data.purchaseTimeLimit)}
+                {formatDeadline(data.purchaseDeadline)}
               </span>
             </div>
 
@@ -135,7 +148,7 @@ export default function ChallengePreview({ data }: ChallengePreviewProps) {
         </section>
 
         {/* 미션 섹션 (간략히) */}
-        <section className="bg-white px-4 py-5">
+        <section className="bg-white px-4 py-5 border-b border-gray-100">
           <div className="flex items-center gap-3 mb-4">
             <span
               className="flex items-center justify-center w-6 h-6 text-white text-xs font-bold rounded-full"
@@ -146,10 +159,27 @@ export default function ChallengePreview({ data }: ChallengePreviewProps) {
             <span className="text-base font-semibold text-gray-900">구매 인증하기</span>
           </div>
           <div className="pl-9 text-sm text-gray-500">
-            <p>1) 제품을 &apos;나에게 선물하기&apos;로 구매해주세요.</p>
-            <p className="mt-1">2) 주문 상세정보를 캡처해주세요.</p>
+            <p>1) 주문 상세정보를 캡처해주세요.</p>
+            <p className="mt-1">2) 기간 내로 앱에 인증해주세요.</p>
           </div>
         </section>
+
+        {/* 상세 이미지 (다중) */}
+        {data.detailImages && data.detailImages.length > 0 && (
+          <section className="bg-white px-4 py-5 border-b border-gray-100">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">상품 상세 정보</h3>
+            <div className="space-y-2">
+              {data.detailImages.map((img, index) => (
+                <img
+                  key={index}
+                  src={img}
+                  alt={`상품 상세 ${index + 1}`}
+                  className="w-full rounded-lg"
+                />
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* 하단 CTA 미리보기 */}
         <div className="bg-white border-t border-gray-200 px-4 py-3">

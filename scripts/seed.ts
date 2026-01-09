@@ -46,11 +46,14 @@ async function seed() {
   const now = new Date().toISOString();
 
   // 1. challenges 시트 헤더 + 더미 데이터
+  // 컬럼: id, platform, title, option, (구 purchaseTimeLimit), originalPrice, paybackRate, paybackAmount, finalPrice, productImage, productLink, detailImages, status, createdAt, updatedAt, createdBy, purchaseDeadline, reviewDeadline
+  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   const challengeData = [
-    ["id", "platform", "title", "option", "purchaseTimeLimit", "originalPrice", "paybackRate", "paybackAmount", "finalPrice", "productImage", "productLink", "status", "createdAt", "updatedAt"],
-    ["test-1", "카카오 선물하기", "수플린 달콤한 설향 딸기 800g", "특품(24~30입) *1개", "1/15 하루 동안", "30000", "40", "12000", "18000", "", "https://gift.kakao.com/product/123", "published", now, now],
-    ["test-2", "올리브영", "닥터지 레드 블레미쉬 클리어 수딩 크림", "70ml", "1/20까지", "25000", "50", "12500", "12500", "", "https://oliveyoung.co.kr/product/456", "published", now, now],
-    ["test-3", "쿠팡", "곰곰 무항생제 신선한 대란", "30구 *2팩", "1/18 하루 동안", "15000", "60", "9000", "6000", "", "https://coupang.com/product/789", "draft", now, now],
+    ["id", "platform", "title", "option", "", "originalPrice", "paybackRate", "paybackAmount", "finalPrice", "productImage", "productLink", "detailImages", "status", "createdAt", "updatedAt", "createdBy", "purchaseDeadline", "reviewDeadline"],
+    ["test-1", "카카오 선물하기", "수플린 달콤한 설향 딸기 800g", "특품(24~30입) *1개", "", "30000", "40", "12000", "18000", "", "https://gift.kakao.com/product/123", "[]", "published", now, now, "", tomorrow, nextWeek],
+    ["test-2", "올리브영", "닥터지 레드 블레미쉬 클리어 수딩 크림", "70ml", "", "25000", "50", "12500", "12500", "", "https://oliveyoung.co.kr/product/456", "[]", "published", now, now, "", tomorrow, nextWeek],
+    ["test-3", "쿠팡", "곰곰 무항생제 신선한 대란", "30구 *2팩", "", "15000", "60", "9000", "6000", "", "https://coupang.com/product/789", "[]", "draft", now, now, "", tomorrow, nextWeek],
   ];
 
   // 2. missions 시트 헤더 + 더미 데이터
@@ -65,7 +68,7 @@ async function seed() {
     // challenges 시트 데이터 삽입
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
-      range: "challenges!A1:N4",
+      range: "challenges!A1:R4",
       valueInputOption: "USER_ENTERED",
       requestBody: { values: challengeData },
     });

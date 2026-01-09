@@ -5,14 +5,15 @@ export interface Challenge {
   platform: string;
   title: string;
   option: string;
-  purchaseTimeLimit: string;
+  purchaseDeadline: string; // 구매 인증 기한 (ISO datetime)
+  reviewDeadline: string; // 리뷰 인증 기한 (ISO datetime)
   originalPrice: number;
   paybackRate: number;
   paybackAmount: number;
   finalPrice: number;
   productImage: string;
   productLink: string;
-  detailImage: string;
+  detailImages: string[];
   status: "draft" | "published" | "deleted";
   createdBy?: string;
   createdAt: string;
@@ -38,14 +39,15 @@ export interface ChallengeInput {
   platform: string;
   title: string;
   option: string;
-  purchaseTimeLimit: string;
+  purchaseDeadline: string; // 구매 인증 기한 (ISO datetime)
+  reviewDeadline: string; // 리뷰 인증 기한 (ISO datetime)
   originalPrice: number;
   paybackRate: number;
   paybackAmount: number;
   finalPrice: number;
   productImage: string;
   productLink: string;
-  detailImage: string;
+  detailImages: string[];
   status: "draft" | "published";
 }
 

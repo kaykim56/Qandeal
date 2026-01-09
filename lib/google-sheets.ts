@@ -27,7 +27,7 @@ export async function getAllChallenges(): Promise<Challenge[]> {
   const sheets = getSheets();
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: "challenges!A2:P",
+    range: "challenges!A2:R",
   });
 
   const rows = response.data.values || [];
@@ -40,7 +40,7 @@ export async function getChallengeById(id: string): Promise<ChallengeWithMission
   // 챌린지 데이터 가져오기
   const challengeResponse = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: "challenges!A2:P",
+    range: "challenges!A2:R",
   });
 
   const rows = challengeResponse.data.values || [];
@@ -73,23 +73,25 @@ export async function createChallenge(input: ChallengeInput, createdBy?: string)
     input.platform,
     input.title,
     input.option,
-    input.purchaseTimeLimit,
+    "", // 구 purchaseTimeLimit 컬럼 (사용 안 함)
     input.originalPrice,
     input.paybackRate,
     input.paybackAmount,
     input.finalPrice,
     input.productImage,
     input.productLink,
-    input.detailImage || "",
+    JSON.stringify(input.detailImages || []),
     input.status,
     now,
     now,
     createdBy || "",
+    input.purchaseDeadline || "", // 구매 인증 기한
+    input.reviewDeadline || "", // 리뷰 인증 기한
   ];
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: SHEET_ID,
-    range: "challenges!A:P",
+    range: "challenges!A:R",
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [row] },
   });
@@ -118,7 +120,7 @@ export async function updateChallenge(id: string, input: Partial<ChallengeInput>
   // 기존 데이터 찾기
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: "challenges!A2:P",
+    range: "challenges!A2:R",
   });
 
   const rows = response.data.values || [];
@@ -133,22 +135,25 @@ export async function updateChallenge(id: string, input: Partial<ChallengeInput>
     updated.platform,
     updated.title,
     updated.option,
-    updated.purchaseTimeLimit,
+    "", // 구 purchaseTimeLimit 컬럼 (사용 안 함)
     updated.originalPrice,
     updated.paybackRate,
     updated.paybackAmount,
     updated.finalPrice,
     updated.productImage,
     updated.productLink,
-    updated.detailImage || "",
+    JSON.stringify(updated.detailImages || []),
     updated.status,
     updated.createdAt,
     updated.updatedAt,
+    updated.createdBy || "",
+    updated.purchaseDeadline || "",
+    updated.reviewDeadline || "",
   ];
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: SHEET_ID,
-    range: `challenges!A${rowIndex + 2}:O${rowIndex + 2}`,
+    range: `challenges!A${rowIndex + 2}:R${rowIndex + 2}`,
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [row] },
   });
@@ -162,7 +167,7 @@ export async function deleteChallenge(id: string): Promise<boolean> {
   // 챌린지 행 찾기
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: "challenges!A2:P",
+    range: "challenges!A2:R",
   });
 
   const rows = response.data.values || [];
@@ -221,8 +226,174 @@ export async function updateMissionImages(
 }
 
 // ============================================
+// 참여 기록 CRUD (participations)
+// ============================================
+
+export interface Participation {
+  id: string;
+  challengeId: string;
+  userId: string;
+  purchaseImageUrl: string;
+  reviewImageUrl: string;
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+}
+
+// 참여 생성 (참가하기 버튼 클릭 시)
+export async function createParticipation(data: {
+  challengeId: string;
+  userId: string;
+}): Promise<string> {
+  const sheets = getSheets();
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+
+  const row = [
+    id,
+    data.challengeId,
+    data.userId,
+    "", // purchaseImageUrl
+    "", // reviewImageUrl
+    "pending", // status
+    now, // createdAt
+    "", // reviewedAt
+    "", // reviewedBy
+  ];
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SHEET_ID,
+    range: "participations!A:I",
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [row] },
+  });
+
+  return id;
+}
+
+// 참여 조회 (userId + challengeId로)
+export async function getParticipation(
+  challengeId: string,
+  userId: string
+): Promise<Participation | null> {
+  const sheets = getSheets();
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID,
+    range: "participations!A2:I",
+  });
+
+  const rows = response.data.values || [];
+  const row = rows.find((r) => r[1] === challengeId && r[2] === userId);
+  if (!row) return null;
+
+  return rowToParticipation(row);
+}
+
+// 인증 이미지 업데이트
+export async function updateParticipationImage(
+  participationId: string,
+  stepType: "purchase" | "review",
+  imageUrl: string
+): Promise<boolean> {
+  const sheets = getSheets();
+
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID,
+    range: "participations!A2:I",
+  });
+
+  const rows = response.data.values || [];
+  const rowIndex = rows.findIndex((r) => r[0] === participationId);
+  if (rowIndex === -1) return false;
+
+  const column = stepType === "purchase" ? "D" : "E";
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SHEET_ID,
+    range: `participations!${column}${rowIndex + 2}`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [[imageUrl]] },
+  });
+
+  return true;
+}
+
+// 모든 참여 조회
+export async function getAllParticipations(): Promise<Participation[]> {
+  try {
+    const sheets = getSheets();
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: "participations!A2:I",
+    });
+
+    const rows = response.data.values || [];
+    return rows.map(rowToParticipation);
+  } catch (error) {
+    // 시트가 없는 경우 빈 배열 반환
+    console.error("getAllParticipations error:", error);
+    return [];
+  }
+}
+
+// 참여 상태 업데이트 (승인/거절)
+export async function updateParticipationStatus(
+  id: string,
+  status: "approved" | "rejected",
+  reviewedBy: string
+): Promise<boolean> {
+  const sheets = getSheets();
+
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID,
+    range: "participations!A2:I",
+  });
+
+  const rows = response.data.values || [];
+  const rowIndex = rows.findIndex((r) => r[0] === id);
+  if (rowIndex === -1) return false;
+
+  const now = new Date().toISOString();
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SHEET_ID,
+    range: `participations!F${rowIndex + 2}:I${rowIndex + 2}`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [[status, now, reviewedBy]] },
+  });
+
+  return true;
+}
+
+function rowToParticipation(row: string[]): Participation {
+  return {
+    id: row[0] || "",
+    challengeId: row[1] || "",
+    userId: row[2] || "",
+    purchaseImageUrl: row[3] || "",
+    reviewImageUrl: row[4] || "",
+    status: (row[5] as "pending" | "approved" | "rejected") || "pending",
+    createdAt: row[6] || "",
+    reviewedAt: row[7] || undefined,
+    reviewedBy: row[8] || undefined,
+  };
+}
+
+// ============================================
 // 헬퍼 함수
 // ============================================
+
+function parseDetailImages(value: string): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    // Fallback for old single image format
+    return value ? [value] : [];
+  }
+}
 
 function rowToChallenge(row: string[]): Challenge {
   return {
@@ -230,18 +401,20 @@ function rowToChallenge(row: string[]): Challenge {
     platform: row[1] || "",
     title: row[2] || "",
     option: row[3] || "",
-    purchaseTimeLimit: row[4] || "",
+    // row[4]는 구 purchaseTimeLimit 컬럼 (사용 안 함)
     originalPrice: Number(row[5]) || 0,
     paybackRate: Number(row[6]) || 0,
     paybackAmount: Number(row[7]) || 0,
     finalPrice: Number(row[8]) || 0,
     productImage: row[9] || "",
     productLink: row[10] || "",
-    detailImage: row[11] || "",
+    detailImages: parseDetailImages(row[11]),
     status: (row[12] as "draft" | "published") || "draft",
     createdAt: row[13] || "",
     updatedAt: row[14] || "",
     createdBy: row[15] || "",
+    purchaseDeadline: row[16] || "", // 구매 인증 기한
+    reviewDeadline: row[17] || "", // 리뷰 인증 기한
   };
 }
 
@@ -257,11 +430,7 @@ function getDefaultMissions(challengeId: string, missionData?: string[]): Missio
       order: 1,
       title: "구매 인증하기",
       steps: [
-        "제품을 '나에게 선물하기'로 구매해주세요.",
-        "🚨 판매가가 다를 경우 구매 페이지의 가격은 구매 당일에 변경돼요.",
-        "[선물하기] > 주문내역 > 상세보기]로 이동해주세요.",
-        "주문일, 주문번호, 주문상품이 보이도록 주문 상세정보를 캡처해주세요.",
-        "캡처한 스크린샷을 앱에 인증해주세요.",
+        "주문일, 주문번호, 주문상품이 보이도록 주문 상세정보를 캡처하여 인증해주세요.",
       ],
       note: "• 오후 11시 59분 59초 전까지 인증",
       exampleImage: purchaseExampleImage || null,
@@ -272,9 +441,7 @@ function getDefaultMissions(challengeId: string, missionData?: string[]): Missio
       order: 2,
       title: "제품 리뷰 인증하기",
       steps: [
-        "제품을 개봉하여 사용/섭취한 사진이 포함된 포토리뷰를 작성해주세요.",
-        "[선물함 > 선물 후기 > 작성한 후기]로 이동해주세요.",
-        "해당 제품 리뷰를 캡처하여 앱에 인증해주세요.",
+        "제품을 개봉하여 사용/섭취한 사진이 포함된 포토리뷰를 캡처하여 인증해주세요.",
       ],
       note: null,
       exampleImage: reviewExampleImage || null,

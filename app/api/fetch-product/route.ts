@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       title: extractTitle(html),
       price: extractPrice(html),
       image: extractImage(html, url),
-      detailImage: extractDetailImage(html, url),
+      detailImages: extractDetailImages(html, url),
       description: extractDescription(html),
       platform: extractPlatform(url),
     };
@@ -146,24 +146,41 @@ function extractImage(html: string, baseUrl: string): string | null {
   return imageUrl;
 }
 
-// 상세 이미지 추출 (긴 상품 상세 페이지 이미지)
-function extractDetailImage(html: string, baseUrl: string): string | null {
-  // 카카오 선물하기 상세 이미지 패턴
+// 상세 이미지 추출 (다중 이미지 지원)
+function extractDetailImages(html: string, baseUrl: string): string[] {
+  const detailImages: string[] = [];
+  const seen = new Set<string>();
+
+  // 카카오 선물하기 editor 이미지 (st.kakaocdn.net/product/gift/editor/)
+  const kakaoEditorPattern = /https?:\/\/st\.kakaocdn\.net\/product\/gift\/editor\/[^"'\s]+\.(?:jpg|jpeg|png|gif|webp)/gi;
+  const kakaoMatches = html.match(kakaoEditorPattern);
+  if (kakaoMatches && kakaoMatches.length > 0) {
+    // 중복 제거하며 모든 editor 이미지 반환
+    for (const img of kakaoMatches) {
+      if (!seen.has(img)) {
+        seen.add(img);
+        detailImages.push(img);
+      }
+    }
+    return detailImages;
+  }
+
+  // 기타 상세 이미지 패턴
   const detailPatterns = [
     // 카카오 선물하기 상세 이미지
-    /<img[^>]+class="[^"]*detail[^"]*"[^>]+src="([^"]+)"/i,
-    /<img[^>]+src="([^"]+)"[^>]+class="[^"]*detail[^"]*"/i,
+    /<img[^>]+class="[^"]*detail[^"]*"[^>]+src="([^"]+)"/gi,
+    /<img[^>]+src="([^"]+)"[^>]+class="[^"]*detail[^"]*"/gi,
     // data-src 패턴 (lazy loading)
-    /<img[^>]+class="[^"]*detail[^"]*"[^>]+data-src="([^"]+)"/i,
+    /<img[^>]+class="[^"]*detail[^"]*"[^>]+data-src="([^"]+)"/gi,
     // 상품 상세 이미지 영역
-    /class="[^"]*(?:product-detail|item-detail|detail-image)[^"]*"[^>]*>[\s\S]*?<img[^>]+src="([^"]+)"/i,
+    /class="[^"]*(?:product-detail|item-detail|detail-image)[^"]*"[^>]*>[\s\S]*?<img[^>]+src="([^"]+)"/gi,
     // 일반적인 긴 상세 이미지 패턴
-    /<img[^>]+src="([^"]+(?:detail|desc|content)[^"]*\.(?:jpg|jpeg|png|gif|webp))"/i,
+    /<img[^>]+src="([^"]+(?:detail|desc|content)[^"]*\.(?:jpg|jpeg|png|gif|webp))"/gi,
   ];
 
   for (const pattern of detailPatterns) {
-    const match = html.match(pattern);
-    if (match) {
+    let match;
+    while ((match = pattern.exec(html)) !== null) {
       let imageUrl = match[1];
 
       // 상대 경로를 절대 경로로
@@ -175,11 +192,14 @@ function extractDetailImage(html: string, baseUrl: string): string | null {
         imageUrl = `${urlObj.origin}/${imageUrl}`;
       }
 
-      return imageUrl;
+      if (!seen.has(imageUrl)) {
+        seen.add(imageUrl);
+        detailImages.push(imageUrl);
+      }
     }
   }
 
-  return null;
+  return detailImages;
 }
 
 // 설명 추출
