@@ -3,9 +3,10 @@
 import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Save, X, ExternalLink, Loader2, LinkIcon, ImageIcon, GripVertical, ZoomIn } from "lucide-react";
+import { ArrowLeft, Save, X, ExternalLink, Loader2, LinkIcon, ImageIcon, GripVertical, ZoomIn, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { ChallengeWithMissions } from "@/lib/types";
+import ChallengePreview from "@/components/ChallengePreview";
 
 export default function EditChallengePage() {
   const { data: session, status } = useSession();
@@ -39,6 +40,7 @@ export default function EditChallengePage() {
   const [newDetailImageUrl, setNewDetailImageUrl] = useState("");
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [showPreview, setShowPreview] = useState(true);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -260,27 +262,43 @@ export default function EditChallengePage() {
     <div className="min-h-screen bg-gray-100">
       {/* 헤더 */}
       <header className="bg-white shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className={`mx-auto px-4 py-4 flex items-center justify-between ${showPreview ? "max-w-7xl" : "max-w-4xl"}`}>
           <div className="flex items-center gap-4">
             <Link href="/admin" className="p-2 hover:bg-gray-100 rounded-lg">
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </Link>
             <h1 className="text-xl font-bold text-gray-900">챌린지 수정</h1>
           </div>
-          <Link
-            href={`/challenge/${id}`}
-            target="_blank"
-            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
-          >
-            <ExternalLink className="w-4 h-4" />
-            미리보기
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowPreview(!showPreview)}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                showPreview
+                  ? "bg-orange-100 text-orange-600"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {showPreview ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {showPreview ? "미리보기 숨기기" : "미리보기 보기"}
+            </button>
+            <Link
+              href={`/challenge/${id}`}
+              target="_blank"
+              className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+            >
+              <ExternalLink className="w-4 h-4" />
+              새 탭
+            </Link>
+          </div>
         </div>
       </header>
 
-      {/* 폼 */}
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        <form className="space-y-6">
+      {/* 본문: 폼 + 미리보기 */}
+      <div className={`mx-auto px-4 py-8 ${showPreview ? "max-w-7xl" : "max-w-4xl"}`}>
+        <div className={`${showPreview ? "flex gap-8" : ""}`}>
+          {/* 폼 영역 */}
+          <main className={`${showPreview ? "flex-1 min-w-0" : ""}`}>
+            <form className="space-y-6">
           {/* 기본 정보 */}
           <section className="bg-white rounded-lg p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">기본 정보</h2>
@@ -677,8 +695,36 @@ export default function EditChallengePage() {
               저장 후 게시
             </button>
           </div>
-        </form>
-      </main>
+            </form>
+          </main>
+
+          {/* 미리보기 영역 */}
+          {showPreview && (
+            <aside className="w-[420px] flex-shrink-0 sticky top-4 self-start hidden lg:block">
+              <div className="bg-white rounded-lg shadow-sm p-4">
+                <h3 className="text-sm font-medium text-gray-500 mb-3 text-center">실시간 미리보기</h3>
+                <div className="transform scale-[0.85] origin-top">
+                  <ChallengePreview
+                    data={{
+                      platform: form.platform,
+                      title: form.title,
+                      option: form.hasSpecificOption ? form.option : "",
+                      purchaseDeadline: form.purchaseDeadline,
+                      originalPrice: form.originalPrice,
+                      paybackRate: form.paybackRate,
+                      paybackAmount: form.paybackAmount,
+                      finalPrice: form.finalPrice,
+                      productImage: form.productImage,
+                      productLink: form.productLink,
+                      detailImages: form.detailImages,
+                    }}
+                  />
+                </div>
+              </div>
+            </aside>
+          )}
+        </div>
+      </div>
 
       {/* 이미지 확대 모달 */}
       {expandedImage && (
