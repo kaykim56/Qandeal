@@ -34,14 +34,9 @@ function formatDeadline(dateString: string): string {
     const date = new Date(dateString);
     const month = date.getMonth() + 1;
     const day = date.getDate();
-    const hours = date.getHours();
-    const minutes = date.getMinutes();
-
-    // 시간이 23:59면 "~까지" 형식으로
-    if (hours === 23 && minutes === 59) {
-      return `${month}/${day} 자정까지`;
-    }
-    return `${month}/${day} ${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}까지`;
+    const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
+    const dayName = dayNames[date.getDay()];
+    return `${month}/${day}(${dayName})`;
   } catch {
     return "";
   }
@@ -63,14 +58,14 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
           order: 1,
           title: "구매 인증하기",
           description: "주문일, 주문번호, 주문상품이 보이도록 주문 상세정보를 캡처하여 인증해주세요.",
-          exampleImage: null,
+          exampleImages: [],
           deadline: challenge.purchaseDeadline,
         },
         {
           order: 2,
           title: "리뷰 인증하기",
           description: "제품을 개봉하여 사용/섭취한 사진이 포함된 포토리뷰를 캡처하여 인증해주세요.",
-          exampleImage: null,
+          exampleImages: [],
           deadline: challenge.reviewDeadline,
         },
       ];
@@ -83,7 +78,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
       imageUrl: undefined,
       deadline: ms.deadline,
       description: ms.description,
-      exampleImage: ms.exampleImage,
+      exampleImages: ms.exampleImages || [],
     }))
   );
   const [paybackStatus, setPaybackStatus] = useState<"pending" | "reviewing" | "paying" | "completed">("pending");
@@ -367,29 +362,39 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
 
             {/* 동적 미션 스텝들 */}
             {missionSteps.map((step, index) => (
-              <div key={index} className="flex gap-3">
-                <span
-                  className="flex-shrink-0 w-6 h-6 rounded-full text-white text-xs font-bold flex items-center justify-center"
-                  style={{ backgroundColor: "#ff6600" }}
-                >
-                  {index + 2}
-                </span>
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900 mb-1">{step.title}</p>
-                  <p className="text-sm text-gray-500 mb-2">{step.description}</p>
-                  {step.exampleImage && (
-                    <img
-                      src={step.exampleImage}
-                      alt={`${step.title} 예시`}
-                      className="w-full max-w-[200px] rounded-lg border border-gray-200 mx-auto block"
-                    />
-                  )}
-                  {step.deadline && (
-                    <p className="text-xs text-orange-500 mt-1">
-                      기한: {formatDeadline(step.deadline)}
-                    </p>
-                  )}
+              <div key={index}>
+                <div className="flex gap-3">
+                  <span
+                    className="flex-shrink-0 w-6 h-6 rounded-full text-white text-xs font-bold flex items-center justify-center"
+                    style={{ backgroundColor: "#ff6600" }}
+                  >
+                    {index + 2}
+                  </span>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="font-medium text-gray-900">{step.title}</p>
+                      {step.deadline && (
+                        <span className="text-xs text-orange-500">
+                          {formatDeadline(step.deadline)}까지
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500">{step.description}</p>
+                  </div>
                 </div>
+                {/* 예시 이미지 - 화면 중앙 정렬 */}
+                {step.exampleImages && step.exampleImages.length > 0 && (
+                  <div className="mt-3 space-y-3">
+                    {step.exampleImages.map((img, imgIdx) => (
+                      <img
+                        key={imgIdx}
+                        src={img}
+                        alt={`${step.title} 예시 ${imgIdx + 1}`}
+                        className="max-w-[195px] rounded-lg border border-gray-200 mx-auto block"
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -475,6 +480,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
         stepOrder={currentVerifyStep !== null ? currentVerifyStep + 1 : 1}
         stepTitle={currentVerifyStep !== null ? missionSteps[currentVerifyStep]?.title : ""}
         stepDescription={currentVerifyStep !== null ? missionSteps[currentVerifyStep]?.description : ""}
+        exampleImages={currentVerifyStep !== null ? missionSteps[currentVerifyStep]?.exampleImages || [] : []}
         participationId={participationId || ""}
       />
     </>

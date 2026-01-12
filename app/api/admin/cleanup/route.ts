@@ -34,9 +34,16 @@ export async function GET() {
     // 참여 데이터 가져오기
     const participationsRes = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: "participations!A2:I",
+      range: "participations!A2:J",
     });
     const participationRows = participationsRes.data.values || [];
+
+    // missions 데이터 가져오기
+    const missionsRes = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: "missions!A2:D",
+    });
+    const missionRows = missionsRes.data.values || [];
 
     // 상태별 개수 세기 (정확한 값 확인)
     const statusCounts: Record<string, number> = {};
@@ -69,6 +76,30 @@ export async function GET() {
         rejected: participationRows.filter((r) => r[5] === "rejected").length,
         noId: participationRows.filter((r) => !r[0]).length,
         duplicates: [] as { challengeId: string; userId: string; count: number }[],
+        // 참여 목록 (userId, challengeId, status, testerEmail)
+        list: participationRows.map((r) => ({
+          id: r[0],
+          challengeId: r[1],
+          userId: r[2]?.substring(0, 20) || "(no userId)",
+          status: r[5] || "(empty)",
+          testerEmail: r[9] || "",
+        })),
+      },
+      missions: {
+        total: missionRows.length,
+        // 새 형식 (stepsJson) vs 구 형식 구분
+        newFormat: missionRows.filter((r) => r[2]?.startsWith("[")).length,
+        oldFormat: missionRows.filter((r) => r[2] && !r[2].startsWith("[")).length,
+        empty: missionRows.filter((r) => !r[2]).length,
+        // 연결된 챌린지가 없는 미션
+        orphaned: [] as string[],
+        // 미션 목록
+        list: missionRows.map((r) => ({
+          id: r[0],
+          challengeId: r[1],
+          format: r[2]?.startsWith("[") ? "new (stepsJson)" : r[2] ? "old (exampleImages)" : "empty",
+          preview: r[2]?.substring(0, 50) || "(empty)",
+        })),
       },
     };
 
@@ -94,6 +125,12 @@ export async function GET() {
         const [challengeId, userId] = key.split("|");
         return { challengeId, userId, count };
       });
+
+    // orphaned missions 찾기 (챌린지가 없는 미션)
+    const validChallengeIds = new Set(challengeIds);
+    diagnosis.missions.orphaned = missionRows
+      .filter((r) => r[1] && !validChallengeIds.has(r[1]))
+      .map((r) => r[1]);
 
     return NextResponse.json({
       success: true,
@@ -259,13 +296,104 @@ export async function POST(request: Request) {
       });
     }
 
+    if (action === "clear-all-participations") {
+      // 모든 참여 기록 삭제 (테스트 데이터 정리용)
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId: SHEET_ID,
+        range: "participations!A2:J",
+      });
+      const rows = res.data.values || [];
+      const count = rows.length;
+
+      if (count === 0) {
+        return NextResponse.json({ success: true, message: "삭제할 참여 기록이 없습니다" });
+      }
+
+      await sheets.spreadsheets.values.clear({
+        spreadsheetId: SHEET_ID,
+        range: "participations!A2:J",
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `${count}개의 참여 기록을 모두 삭제했습니다`,
+      });
+    }
+
+    if (action === "clear-orphaned-missions") {
+      // 챌린지가 없는 미션 삭제
+      const challengesRes = await sheets.spreadsheets.values.get({
+        spreadsheetId: SHEET_ID,
+        range: "challenges!A2:A",
+      });
+      const challengeIds = new Set((challengesRes.data.values || []).map((r) => r[0]).filter(Boolean));
+
+      const missionsRes = await sheets.spreadsheets.values.get({
+        spreadsheetId: SHEET_ID,
+        range: "missions!A2:D",
+      });
+      const missionRows = missionsRes.data.values || [];
+
+      const validMissions = missionRows.filter((r) => challengeIds.has(r[1]));
+      const removedCount = missionRows.length - validMissions.length;
+
+      if (removedCount === 0) {
+        return NextResponse.json({ success: true, message: "정리할 미션이 없습니다" });
+      }
+
+      await sheets.spreadsheets.values.clear({
+        spreadsheetId: SHEET_ID,
+        range: "missions!A2:D",
+      });
+
+      if (validMissions.length > 0) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: SHEET_ID,
+          range: "missions!A2:D",
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: validMissions },
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: `${removedCount}개의 고아 미션을 삭제했습니다 (유효한 ${validMissions.length}개 유지)`,
+      });
+    }
+
+    if (action === "clear-all-missions") {
+      // 모든 미션 삭제 (재생성 전 초기화용)
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId: SHEET_ID,
+        range: "missions!A2:D",
+      });
+      const count = (res.data.values || []).length;
+
+      if (count === 0) {
+        return NextResponse.json({ success: true, message: "삭제할 미션이 없습니다" });
+      }
+
+      await sheets.spreadsheets.values.clear({
+        spreadsheetId: SHEET_ID,
+        range: "missions!A2:D",
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `${count}개의 미션을 모두 삭제했습니다`,
+      });
+    }
+
     return NextResponse.json(
       {
         error: "유효하지 않은 action입니다",
         availableActions: [
           "remove-deleted-challenges",
           "remove-unpublished-challenges",
-          "remove-duplicate-participations"
+          "remove-duplicate-participations",
+          "clear-all-participations",
+          "clear-orphaned-missions",
+          "clear-all-missions"
         ]
       },
       { status: 400 }

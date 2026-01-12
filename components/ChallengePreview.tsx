@@ -29,14 +29,14 @@ export default function ChallengePreview({ data }: ChallengePreviewProps) {
           order: 1,
           title: "구매 인증하기",
           description: "주문일, 주문번호, 주문상품이 보이도록 주문 상세정보를 캡처해주세요.",
-          exampleImage: null,
+          exampleImages: [],
           deadline: data.purchaseDeadline,
         },
         {
           order: 2,
           title: "리뷰 인증하기",
           description: "구매처에 작성한 포토리뷰 화면을 캡처해주세요.",
-          exampleImage: null,
+          exampleImages: [],
           deadline: "",
         },
       ];

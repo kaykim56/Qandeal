@@ -9,7 +9,7 @@ export interface Step {
   imageUrl?: string; // 업로드된 이미지 URL
   deadline?: string; // 스텝 기한
   description?: string; // 스텝 설명
-  exampleImage?: string | null; // 예시 이미지
+  exampleImages?: string[]; // 예시 이미지들 (여러 개 가능)
 }
 
 interface MissionStepsProps {

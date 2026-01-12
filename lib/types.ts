@@ -5,7 +5,7 @@ export interface MissionStep {
   order: number;
   title: string;
   description: string;
-  exampleImage: string | null;
+  exampleImages: string[]; // 예시 이미지 (여러 개 가능)
   deadline: string; // ISO datetime
 }
 

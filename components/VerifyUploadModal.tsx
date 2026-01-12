@@ -57,6 +57,7 @@ interface VerifyUploadModalProps {
   stepOrder?: number;
   stepTitle?: string;
   stepDescription?: string;
+  exampleImages?: string[]; // 예시 이미지들
 }
 
 export default function VerifyUploadModal({
@@ -68,6 +69,7 @@ export default function VerifyUploadModal({
   stepOrder,
   stepTitle: propStepTitle,
   stepDescription: propStepDescription,
+  exampleImages = [],
 }: VerifyUploadModalProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -188,6 +190,23 @@ export default function VerifyUploadModal({
         <div className="p-4">
           {/* 안내 문구 */}
           <p className="text-sm text-gray-600 mb-4">{displayDescription}</p>
+
+          {/* 예시 이미지들 */}
+          {exampleImages.length > 0 && (
+            <div className="mb-4 p-3 bg-orange-50 rounded-xl">
+              <p className="text-xs font-medium text-orange-600 mb-2">예시 이미지</p>
+              <div className="flex gap-2 overflow-x-auto">
+                {exampleImages.map((img, idx) => (
+                  <img
+                    key={idx}
+                    src={img}
+                    alt={`예시 ${idx + 1}`}
+                    className="w-24 h-24 object-cover rounded-lg border border-orange-200 flex-shrink-0"
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* 파일 선택 영역 */}
           <input

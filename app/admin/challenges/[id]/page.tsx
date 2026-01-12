@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Save, X, ExternalLink, Loader2, LinkIcon, ImageIcon, GripVertical, ZoomIn, Eye, EyeOff, Plus, Trash2, ChevronUp, ChevronDown, Upload, BookmarkPlus } from "lucide-react";
+import { ArrowLeft, Save, X, ExternalLink, Loader2, LinkIcon, ImageIcon, GripVertical, ZoomIn, Eye, EyeOff, Plus, Trash2, ChevronUp, ChevronDown, Upload } from "lucide-react";
 import Link from "next/link";
 import { ChallengeWithMissions, MissionStep } from "@/lib/types";
 import ChallengePreview from "@/components/ChallengePreview";
@@ -40,16 +40,16 @@ export default function EditChallengePage() {
     missionSteps: [
       {
         order: 1,
-        title: "구매 인증하기",
-        description: "주문일, 주문번호, 주문상품이 보이도록 주문 상세정보를 캡처하여 인증해주세요.",
-        exampleImage: null as string | null,
+        title: "",
+        description: "",
+        exampleImages: [] as string[],
         deadline: "",
       },
       {
         order: 2,
-        title: "리뷰 인증하기",
-        description: "제품을 개봉하여 사용/섭취한 사진이 포함된 포토리뷰를 캡처하여 인증해주세요.",
-        exampleImage: null as string | null,
+        title: "",
+        description: "",
+        exampleImages: [] as string[],
         deadline: "",
       },
     ] as MissionStep[],
@@ -62,6 +62,7 @@ export default function EditChallengePage() {
   // 스텝 프리셋 관련 상태
   const [stepPresets, setStepPresets] = useState<StepPreset[]>(DEFAULT_STEP_PRESETS);
   const [showPresetManager, setShowPresetManager] = useState(false);
+  const [uploadingExampleImage, setUploadingExampleImage] = useState<number | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -85,21 +86,21 @@ export default function EditChallengePage() {
         return;
       }
       const data: ChallengeWithMissions = await res.json();
-      // datetime-local 형식으로 변환 (ISO -> YYYY-MM-DDTHH:mm)
-      const formatDatetimeLocal = (isoString: string) => {
+      // 날짜 형식으로 변환 (ISO -> YYYY-MM-DD)
+      const formatDate = (isoString: string) => {
         if (!isoString) return "";
         try {
           const date = new Date(isoString);
-          return date.toISOString().slice(0, 16);
+          return date.toISOString().slice(0, 10);
         } catch {
           return "";
         }
       };
 
-      // missionSteps 변환 (deadline을 datetime-local 형식으로)
+      // missionSteps 변환 (deadline을 date 형식으로)
       const formattedSteps = (data.missionSteps || []).map((step) => ({
         ...step,
-        deadline: formatDatetimeLocal(step.deadline),
+        deadline: formatDate(step.deadline),
       }));
 
       setForm({
@@ -107,8 +108,8 @@ export default function EditChallengePage() {
         title: data.title,
         hasSpecificOption: !!data.option,
         option: data.option,
-        purchaseDeadline: formatDatetimeLocal(data.purchaseDeadline),
-        reviewDeadline: formatDatetimeLocal(data.reviewDeadline),
+        purchaseDeadline: formatDate(data.purchaseDeadline),
+        reviewDeadline: formatDate(data.reviewDeadline),
         originalPrice: data.originalPrice,
         paybackRate: data.paybackRate,
         paybackAmount: data.paybackAmount,
@@ -180,7 +181,7 @@ export default function EditChallengePage() {
       order: form.missionSteps.length + 1,
       title: "",
       description: "",
-      exampleImage: null,
+      exampleImages: [],
       deadline: "",
     };
     setForm({
@@ -210,9 +211,26 @@ export default function EditChallengePage() {
     setForm({ ...form, missionSteps: newSteps });
   };
 
-  const updateMissionStep = (index: number, field: keyof MissionStep, value: string | null) => {
+  const updateMissionStep = (index: number, field: keyof MissionStep, value: string | string[] | null) => {
     const newSteps = [...form.missionSteps];
     newSteps[index] = { ...newSteps[index], [field]: value };
+    setForm({ ...form, missionSteps: newSteps });
+  };
+
+  // 예시 이미지 추가 (배열에 추가)
+  const addExampleImage = (index: number, url: string) => {
+    const newSteps = [...form.missionSteps];
+    const currentImages = newSteps[index].exampleImages || [];
+    newSteps[index] = { ...newSteps[index], exampleImages: [...currentImages, url] };
+    setForm({ ...form, missionSteps: newSteps });
+  };
+
+  // 예시 이미지 삭제
+  const removeExampleImage = (stepIndex: number, imageIndex: number) => {
+    const newSteps = [...form.missionSteps];
+    const currentImages = [...(newSteps[stepIndex].exampleImages || [])];
+    currentImages.splice(imageIndex, 1);
+    newSteps[stepIndex] = { ...newSteps[stepIndex], exampleImages: currentImages };
     setForm({ ...form, missionSteps: newSteps });
   };
 
@@ -241,6 +259,34 @@ export default function EditChallengePage() {
     saveCustomPreset({ title: step.title, description: step.description });
     setStepPresets(getAllPresets());
     alert("템플릿이 저장되었습니다");
+  };
+
+  // 예시 이미지 업로드
+  const handleExampleImageUpload = async (index: number, file: File) => {
+    setUploadingExampleImage(index);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("challengeId", id);
+      formData.append("stepOrder", String(index + 1));
+
+      const res = await fetch("/api/admin/upload-example", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        addExampleImage(index, data.url);
+      } else {
+        alert("업로드 실패");
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      alert("업로드 실패");
+    } finally {
+      setUploadingExampleImage(null);
+    }
   };
 
   // 제품 링크에서 이미지 자동 가져오기
@@ -284,12 +330,6 @@ export default function EditChallengePage() {
       if (!step.title.trim()) return { field: `step-${i}-title`, message: `스텝 ${i + 1}의 제목을 입력해주세요` };
       if (!step.description.trim()) return { field: `step-${i}-description`, message: `스텝 ${i + 1}의 설명을 입력해주세요` };
       if (!step.deadline) return { field: `step-${i}-deadline`, message: `스텝 ${i + 1}의 기한을 입력해주세요` };
-      // 이전 스텝보다 기한이 빠르면 안됨
-      if (i > 0 && step.deadline && form.missionSteps[i - 1].deadline) {
-        if (new Date(step.deadline) < new Date(form.missionSteps[i - 1].deadline)) {
-          return { field: `step-${i}-deadline`, message: `스텝 ${i + 1}의 기한은 스텝 ${i}보다 늦거나 같아야 합니다` };
-        }
-      }
     }
     if (!form.originalPrice || form.originalPrice <= 0) return { field: "originalPrice", message: "구매가를 입력해주세요" };
     if (!form.paybackRate || form.paybackRate <= 0) return { field: "paybackRate", message: "페이백 비율을 입력해주세요" };
@@ -679,41 +719,90 @@ export default function EditChallengePage() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          기한 *
-                        </label>
-                        <input
-                          id={`step-${index}-deadline`}
-                          type="datetime-local"
-                          value={step.deadline}
-                          onChange={(e) => updateMissionStep(index, "deadline", e.target.value)}
-                          min={index > 0 ? form.missionSteps[index - 1].deadline : undefined}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          예시 이미지 URL
-                        </label>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        기한 *
+                      </label>
+                      <input
+                        id={`step-${index}-deadline`}
+                        type="date"
+                        value={step.deadline}
+                        onChange={(e) => updateMissionStep(index, "deadline", e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        예시 이미지 {(step.exampleImages?.length || 0) > 0 && `(${step.exampleImages.length}개)`}
+                      </label>
+                      <div className="flex gap-2">
                         <input
                           type="url"
-                          value={step.exampleImage || ""}
-                          onChange={(e) => updateMissionStep(index, "exampleImage", e.target.value || null)}
-                          placeholder="https://..."
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                          placeholder="URL 입력 후 + 버튼"
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              const input = e.target as HTMLInputElement;
+                              if (input.value.trim()) {
+                                addExampleImage(index, input.value.trim());
+                                input.value = "";
+                              }
+                            }
+                          }}
+                          id={`step-${index}-example-url`}
                         />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const input = document.getElementById(`step-${index}-example-url`) as HTMLInputElement;
+                            if (input?.value.trim()) {
+                              addExampleImage(index, input.value.trim());
+                              input.value = "";
+                            }
+                          }}
+                          className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-bold"
+                        >
+                          +
+                        </button>
+                        <label className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg cursor-pointer text-sm flex items-center gap-1">
+                          {uploadingExampleImage === index ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Upload className="w-4 h-4" />
+                          )}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleExampleImageUpload(index, file);
+                            }}
+                            disabled={uploadingExampleImage === index}
+                          />
+                        </label>
                       </div>
                     </div>
-                    {/* 예시 이미지 미리보기 */}
-                    {step.exampleImage && (
-                      <div className="mt-2">
-                        <img
-                          src={step.exampleImage}
-                          alt="예시 이미지"
-                          className="w-20 h-20 object-cover rounded-lg border border-gray-200"
-                        />
+                    {/* 예시 이미지 미리보기 (여러 개) */}
+                    {step.exampleImages && step.exampleImages.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {step.exampleImages.map((img, imgIndex) => (
+                          <div key={imgIndex} className="relative">
+                            <img
+                              src={img}
+                              alt={`예시 이미지 ${imgIndex + 1}`}
+                              className="w-20 h-20 object-cover rounded-lg border border-gray-200"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeExampleImage(index, imgIndex)}
+                              className="absolute -top-1 -right-1 p-0.5 bg-red-500 rounded-full text-white hover:bg-red-600"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     )}
                     </>

@@ -38,7 +38,7 @@ export async function getAllChallenges(): Promise<Challenge[]> {
   });
 
   const rows = response.data.values || [];
-  return rows.map(rowToChallenge);
+  return rows.map((row) => rowToChallenge(row));
 }
 
 export async function getChallengeById(id: string): Promise<ChallengeWithMissions | null> {
@@ -505,14 +505,14 @@ function rowToChallenge(row: string[], missionSteps?: MissionStep[]): Challenge 
       order: 1,
       title: "구매 인증하기",
       description: "주문일, 주문번호, 주문상품이 보이도록 주문 상세정보를 캡처하여 인증해주세요.",
-      exampleImage: null,
+      exampleImages: [],
       deadline: row[16] || "", // 구 purchaseDeadline
     },
     {
       order: 2,
       title: "리뷰 인증하기",
       description: "제품을 개봉하여 사용/섭취한 사진이 포함된 포토리뷰를 캡처하여 인증해주세요.",
-      exampleImage: null,
+      exampleImages: [],
       deadline: row[17] || "", // 구 reviewDeadline
     },
   ];
@@ -550,7 +550,19 @@ function parseMissionSteps(missionData: string[] | undefined, purchaseDeadline: 
   // 새 형식: stepsJson이 JSON 배열로 저장됨
   if (missionData[2].startsWith("[")) {
     try {
-      return JSON.parse(missionData[2]);
+      const steps = JSON.parse(missionData[2]) as MissionStep[];
+      // 구 형식 (exampleImage) → 새 형식 (exampleImages) 변환
+      return steps.map((step) => {
+        const oldExampleImage = (step as { exampleImage?: string }).exampleImage;
+        return {
+          ...step,
+          exampleImages: step.exampleImages && step.exampleImages.length > 0
+            ? step.exampleImages
+            : oldExampleImage
+              ? [oldExampleImage]
+              : [],
+        };
+      });
     } catch {
       return getDefaultSteps(purchaseDeadline, reviewDeadline, null, null);
     }
@@ -574,14 +586,14 @@ function getDefaultSteps(
       order: 1,
       title: "구매 인증하기",
       description: "주문일, 주문번호, 주문상품이 보이도록 주문 상세정보를 캡처하여 인증해주세요.",
-      exampleImage: purchaseExampleImage,
+      exampleImages: purchaseExampleImage ? [purchaseExampleImage] : [],
       deadline: purchaseDeadline,
     },
     {
       order: 2,
       title: "리뷰 인증하기",
       description: "제품을 개봉하여 사용/섭취한 사진이 포함된 포토리뷰를 캡처하여 인증해주세요.",
-      exampleImage: reviewExampleImage,
+      exampleImages: reviewExampleImage ? [reviewExampleImage] : [],
       deadline: reviewDeadline,
     },
   ];
