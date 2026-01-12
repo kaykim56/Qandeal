@@ -347,9 +347,14 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
               >
                 2
               </span>
-              <div>
+              <div className="flex-1">
                 <p className="font-medium text-gray-900 mb-1">구매 인증</p>
-                <p className="text-sm text-gray-500">주문 상세정보 캡처 후 이 페이지에서 업로드</p>
+                <p className="text-sm text-gray-500 mb-2">주문 상세정보 캡처 후 이 페이지에서 업로드</p>
+                <img
+                  src="/order.png"
+                  alt="주문 인증 예시"
+                  className="w-full max-w-[200px] rounded-lg border border-gray-200 mx-auto block"
+                />
               </div>
             </div>
 
@@ -360,9 +365,14 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
               >
                 3
               </span>
-              <div>
+              <div className="flex-1">
                 <p className="font-medium text-gray-900 mb-1">리뷰 인증</p>
-                <p className="text-sm text-gray-500">포토리뷰 작성 후 캡처하여 업로드</p>
+                <p className="text-sm text-gray-500 mb-2">포토리뷰 작성 후 캡처하여 업로드</p>
+                <img
+                  src="/review.png"
+                  alt="리뷰 인증 예시"
+                  className="w-full max-w-[200px] rounded-lg border border-gray-200 mx-auto block"
+                />
               </div>
             </div>
           </div>
