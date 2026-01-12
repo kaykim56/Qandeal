@@ -5,6 +5,7 @@ import { ChevronLeft, Share2 } from "lucide-react";
 import { getChallengeById } from "@/lib/google-sheets";
 import { notFound } from "next/navigation";
 import ChallengeContent from "@/components/ChallengeContent";
+import Link from "next/link";
 
 // QANDA 브랜드 색상
 // 메인 오렌지: #ff6600
@@ -58,9 +59,9 @@ export default async function ChallengeDetailPage({ params }: PageProps) {
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* 상단 헤더 */}
       <header className="sticky top-0 z-10 bg-white px-4 py-3 flex items-center justify-between border-b border-gray-100">
-        <button className="p-2 -ml-2 hover:bg-gray-100 rounded-full">
+        <Link href="/" className="p-2 -ml-2 hover:bg-gray-100 rounded-full">
           <ChevronLeft className="w-6 h-6 text-gray-700" />
-        </button>
+        </Link>
         <button className="p-2 hover:bg-gray-100 rounded-full">
           <Share2 className="w-5 h-5 text-gray-700" />
         </button>
