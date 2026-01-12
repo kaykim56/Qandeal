@@ -3,10 +3,17 @@ import { Challenge, ChallengeInput, ChallengeWithMissions, Mission } from "./typ
 
 // Google Sheets 인증
 function getAuth() {
+  let privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
+
+  // \n 문자열을 실제 줄바꿈으로 변환 (두 가지 케이스 모두 처리)
+  if (privateKey.includes("\\n")) {
+    privateKey = privateKey.replace(/\\n/g, "\n");
+  }
+
   return new google.auth.GoogleAuth({
     credentials: {
       client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+      private_key: privateKey,
     },
     scopes: ["https://www.googleapis.com/auth/spreadsheets"],
   });
