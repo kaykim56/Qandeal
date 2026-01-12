@@ -33,52 +33,83 @@ export default function MissionSteps({
   const completedCount = steps.filter((s) => s.status === "completed").length;
   const currentStepIndex = steps.findIndex((s) => s.status === "pending");
 
+  // 스텝이 4개 이상이면 그리드 레이아웃 사용
+  const useGridLayout = steps.length >= 4;
+  // 그리드 열 개수: 스텝+환급 합쳐서 3열 또는 4열
+  const totalItems = steps.length + 1; // 환급 포함
+  const gridCols = totalItems <= 4 ? 4 : totalItems <= 6 ? 3 : 4;
+
   return (
     <div className="bg-white rounded-xl p-4">
       {/* 스텝 컨테이너 */}
       <div className="relative">
-        {/* 가로선 영역 */}
-        <div
-          className="absolute flex items-center"
-          style={{
-            top: "16px",
-            left: "0",
-            right: "0",
-            height: "2px",
-            paddingLeft: "calc(100% / 6)",
-            paddingRight: "calc(100% / 6)",
-          }}
-        >
-          {/* 회색 배경선 */}
-          <div className="w-full h-full bg-gray-300 rounded-full" />
-        </div>
-
-        {/* 오렌지 진행선 */}
-        <div
-          className="absolute flex items-center"
-          style={{
-            top: "16px",
-            left: "0",
-            right: "0",
-            height: "2px",
-            paddingLeft: "calc(100% / 6)",
-            paddingRight: "calc(100% / 6)",
-          }}
-        >
+        {/* 가로선 영역 - 그리드 레이아웃에서는 숨김 */}
+        {!useGridLayout && (
           <div
-            className="h-full rounded-full transition-all duration-300"
+            className="absolute flex items-center"
             style={{
-              backgroundColor: "#ff6600",
-              width:
-                completedCount > 0
-                  ? `${(completedCount / steps.length) * 100}%`
-                  : "0%",
+              top: "16px",
+              left: "0",
+              right: "0",
+              height: "2px",
+              paddingLeft: "calc(100% / 6)",
+              paddingRight: "calc(100% / 6)",
             }}
-          />
-        </div>
+          >
+            {/* 회색 배경선 */}
+            <div className="w-full h-full bg-gray-300 rounded-full" />
+          </div>
+        )}
+
+        {/* 오렌지 진행선 - 그리드 레이아웃에서는 숨김 */}
+        {!useGridLayout && (
+          <div
+            className="absolute flex items-center"
+            style={{
+              top: "16px",
+              left: "0",
+              right: "0",
+              height: "2px",
+              paddingLeft: "calc(100% / 6)",
+              paddingRight: "calc(100% / 6)",
+            }}
+          >
+            <div
+              className="h-full rounded-full transition-all duration-300"
+              style={{
+                backgroundColor: "#ff6600",
+                width:
+                  completedCount > 0
+                    ? `${(completedCount / steps.length) * 100}%`
+                    : "0%",
+              }}
+            />
+          </div>
+        )}
+
+        {/* 그리드 레이아웃: 진행 상황 바 */}
+        {useGridLayout && (
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-gray-500">진행 상황</span>
+              <span className="text-xs font-medium text-orange-500">{completedCount}/{steps.length} 완료</span>
+            </div>
+            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-300"
+                style={{
+                  backgroundColor: "#ff6600",
+                  width: `${(completedCount / steps.length) * 100}%`
+                }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* 스텝 아이템들 */}
-        <div className="relative flex">
+        <div className={`relative ${useGridLayout ? `grid grid-cols-${gridCols} gap-3` : 'flex'}`}
+          style={useGridLayout ? { gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` } : {}}
+        >
           {steps.map((step, index) => {
             const isCurrentStep = index === currentStepIndex;
             const isCompleted = step.status === "completed";
@@ -86,11 +117,11 @@ export default function MissionSteps({
             return (
               <div
                 key={index}
-                className="flex-1 flex flex-col items-center text-center"
+                className={`${useGridLayout ? '' : 'flex-1'} flex flex-col items-center text-center h-full`}
               >
                 {/* 숫자 원 */}
                 <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold mb-2 border-2 bg-white"
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mb-1.5 border-2 bg-white"
                   style={
                     isCompleted
                       ? {
@@ -108,9 +139,9 @@ export default function MissionSteps({
                   {index + 1}
                 </div>
 
-                {/* 타이틀 */}
+                {/* 타이틀 - 높이 고정으로 버튼 정렬 */}
                 <p
-                  className={`text-sm font-medium mb-2 whitespace-pre-line ${
+                  className={`text-xs font-medium mb-1.5 whitespace-pre-line min-h-[32px] flex items-center ${
                     isCompleted ? "text-gray-900" : "text-gray-400"
                   }`}
                 >
@@ -145,9 +176,9 @@ export default function MissionSteps({
           })}
 
           {/* 환급 영역 */}
-          <div className="flex-1 flex flex-col items-center text-center">
+          <div className={`${useGridLayout ? '' : 'flex-1'} flex flex-col items-center text-center h-full`}>
             <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold mb-2 border-2"
+              className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mb-1.5 border-2"
               style={
                 paybackStatus === "completed"
                   ? {
@@ -178,7 +209,7 @@ export default function MissionSteps({
             </div>
 
             <p
-              className={`text-sm font-medium mb-2 ${
+              className={`text-xs font-medium mb-1.5 min-h-[32px] flex items-center ${
                 paybackStatus === "completed"
                   ? "text-gray-900"
                   : paybackStatus === "paying"
