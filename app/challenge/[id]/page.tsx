@@ -35,8 +35,8 @@ export default async function ChallengeDetailPage({ params }: PageProps) {
       platform: "카카오 선물하기",
       title: "수플린 달콤한 설향 딸기 800g 구매하기",
       option: "특품(24~30입) *1개",
-      purchaseDeadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 내일까지
-      reviewDeadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 1주일 뒤까지
+      purchaseDeadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      reviewDeadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       originalPrice: 30000,
       paybackRate: 40,
       paybackAmount: 12000,
@@ -44,6 +44,7 @@ export default async function ChallengeDetailPage({ params }: PageProps) {
       productImage: "",
       productLink: "https://gift.kakao.com/product/11944600",
       detailImages: [],
+      missionSteps: undefined, // 기본 스텝 사용
       status: "published" as const,
       createdAt: "",
       updatedAt: "",
@@ -97,6 +98,7 @@ export default async function ChallengeDetailPage({ params }: PageProps) {
           finalPrice: challenge.finalPrice,
           productLink: challenge.productLink,
           detailImages: challenge.detailImages,
+          missionSteps: challenge.missionSteps,
         }}
       />
     </div>

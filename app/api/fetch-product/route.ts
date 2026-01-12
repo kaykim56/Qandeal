@@ -9,6 +9,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "URL required" }, { status: 400 });
     }
 
+    // 쿠팡인 경우 특별 처리
+    const isCoupang = url.includes("coupang.com");
+
     // 페이지 HTML 가져오기
     const response = await fetch(url, {
       headers: {
@@ -23,6 +26,10 @@ export async function POST(request: NextRequest) {
         "Sec-Fetch-Site": "none",
         "Sec-Fetch-User": "?1",
         "Upgrade-Insecure-Requests": "1",
+        ...(isCoupang ? {
+          "Cookie": "x-coupang-accept-language=ko-KR;",
+          "Referer": "https://www.coupang.com/",
+        } : {}),
       },
       redirect: "follow",
     });
@@ -34,6 +41,14 @@ export async function POST(request: NextRequest) {
     }
 
     const html = await response.text();
+
+    // 쿠팡 봇 차단 감지
+    if (isCoupang && (html.includes("보안 문자") || html.includes("자동화된 요청") || html.length < 5000)) {
+      return NextResponse.json({
+        error: "쿠팡은 자동 가져오기가 제한됩니다. 직접 입력해주세요.",
+        platform: "쿠팡",
+      }, { status: 200 });
+    }
 
     // 제품 정보 추출
     const productInfo = {
@@ -78,6 +93,10 @@ function extractTitle(html: string): string | null {
 function extractPrice(html: string): number | null {
   // 다양한 가격 패턴 시도
   const patterns = [
+    // 쿠팡 가격 (total-price 클래스)
+    /class="total-price"[^>]*>[\s\S]*?<strong>(\d{1,3}(?:,\d{3})*)<\/strong>/i,
+    // 쿠팡 prod-sale-price
+    /class="prod-sale-price"[^>]*>[\s\S]*?(\d{1,3}(?:,\d{3})*)/i,
     // JSON-LD schema
     /"price":\s*"?(\d[\d,]*)"?/i,
     // meta 태그
@@ -118,6 +137,10 @@ function extractImage(html: string, baseUrl: string): string | null {
   // 상품 이미지 패턴
   if (!imageUrl) {
     const imgPatterns = [
+      // 쿠팡 대표 이미지
+      /<img[^>]+class="[^"]*prod-image[^"]*"[^>]+src="([^"]+)"/i,
+      /<img[^>]+id="repImg"[^>]+src="([^"]+)"/i,
+      // 일반 패턴
       /<img[^>]+class="[^"]*(?:product|goods|item|main)[^"]*"[^>]+src="([^"]+)"/i,
       /<img[^>]+src="([^"]+)"[^>]+class="[^"]*(?:product|goods|item|main)[^"]*"/i,
       /<img[^>]+id="[^"]*(?:product|goods|item|main)[^"]*"[^>]+src="([^"]+)"/i,
@@ -163,6 +186,23 @@ function extractDetailImages(html: string, baseUrl: string): string[] {
       }
     }
     return detailImages;
+  }
+
+  // 쿠팡 상세 이미지 (vendor_inventory 또는 image11 도메인)
+  const coupangDetailPattern = /https?:\/\/(?:thumbnail\d*\.coupangcdn\.com|image\d*\.coupangcdn\.com)\/[^"'\s]+\.(?:jpg|jpeg|png|gif|webp)/gi;
+  const coupangMatches = html.match(coupangDetailPattern);
+  if (coupangMatches && coupangMatches.length > 0) {
+    // 상세 이미지만 필터 (thumbnails 제외, 큰 이미지만)
+    for (const img of coupangMatches) {
+      // remote 또는 vendor_inventory 경로만 (상세 이미지)
+      if ((img.includes("/remote/") || img.includes("/vendor_inventory/")) && !seen.has(img)) {
+        seen.add(img);
+        detailImages.push(img);
+      }
+    }
+    if (detailImages.length > 0) {
+      return detailImages;
+    }
   }
 
   // 기타 상세 이미지 패턴

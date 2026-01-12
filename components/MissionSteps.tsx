@@ -7,6 +7,9 @@ export interface Step {
   title: string;
   status: "pending" | "completed";
   imageUrl?: string; // 업로드된 이미지 URL
+  deadline?: string; // 스텝 기한
+  description?: string; // 스텝 설명
+  exampleImage?: string | null; // 예시 이미지
 }
 
 interface MissionStepsProps {

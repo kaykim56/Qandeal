@@ -53,6 +53,10 @@ interface VerifyUploadModalProps {
   onSuccess: (imageUrl: string) => void;
   stepType: "purchase" | "review";
   participationId: string;
+  // 동적 스텝 지원을 위한 새 props
+  stepOrder?: number;
+  stepTitle?: string;
+  stepDescription?: string;
 }
 
 export default function VerifyUploadModal({
@@ -61,6 +65,9 @@ export default function VerifyUploadModal({
   onSuccess,
   stepType,
   participationId,
+  stepOrder,
+  stepTitle: propStepTitle,
+  stepDescription: propStepDescription,
 }: VerifyUploadModalProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -70,11 +77,15 @@ export default function VerifyUploadModal({
 
   if (!isOpen) return null;
 
-  const stepTitle = stepType === "purchase" ? "구매 인증" : "리뷰 인증";
-  const stepDescription =
+  // 동적 스텝인 경우 props 사용, 아니면 기본값
+  const defaultTitle = stepType === "purchase" ? "구매 인증" : "리뷰 인증";
+  const defaultDescription =
     stepType === "purchase"
       ? "주문일, 주문번호, 주문상품이 보이도록 주문 상세정보를 캡처해주세요."
       : "구매처에 작성한 포토리뷰 화면을 캡처해주세요.";
+
+  const displayTitle = propStepTitle || defaultTitle;
+  const displayDescription = propStepDescription || defaultDescription;
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -119,6 +130,10 @@ export default function VerifyUploadModal({
       formData.append("file", compressedFile);
       formData.append("participationId", participationId);
       formData.append("stepType", stepType);
+      // 동적 스텝인 경우 stepOrder도 전송
+      if (stepOrder !== undefined) {
+        formData.append("stepOrder", String(stepOrder));
+      }
 
       const response = await fetch("/api/verify/upload", {
         method: "POST",
@@ -160,7 +175,7 @@ export default function VerifyUploadModal({
       <div className="relative bg-white w-full sm:w-[400px] sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-hidden">
         {/* 헤더 */}
         <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
-          <h2 className="text-lg font-bold text-gray-900">{stepTitle}</h2>
+          <h2 className="text-lg font-bold text-gray-900">{displayTitle}</h2>
           <button
             onClick={handleClose}
             className="p-1 hover:bg-gray-100 rounded-full"
@@ -172,7 +187,7 @@ export default function VerifyUploadModal({
         {/* 컨텐츠 */}
         <div className="p-4">
           {/* 안내 문구 */}
-          <p className="text-sm text-gray-600 mb-4">{stepDescription}</p>
+          <p className="text-sm text-gray-600 mb-4">{displayDescription}</p>
 
           {/* 파일 선택 영역 */}
           <input

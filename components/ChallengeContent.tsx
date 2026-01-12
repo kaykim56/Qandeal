@@ -7,6 +7,7 @@ import MissionSteps, { Step } from "./MissionSteps";
 import ParticipateModal from "./ParticipateModal";
 import VerifyUploadModal from "./VerifyUploadModal";
 import Link from "next/link";
+import { MissionStep } from "@/lib/types";
 
 interface ChallengeContentProps {
   challenge: {
@@ -14,14 +15,15 @@ interface ChallengeContentProps {
     platform: string;
     title: string;
     option: string;
-    purchaseDeadline: string; // 구매 인증 기한
-    reviewDeadline: string; // 리뷰 인증 기한
+    purchaseDeadline: string; // 구매 인증 기한 (하위 호환용)
+    reviewDeadline: string; // 리뷰 인증 기한 (하위 호환용)
     originalPrice: number;
     paybackRate: number;
     paybackAmount: number;
     finalPrice: number;
     productLink: string;
     detailImages: string[];
+    missionSteps?: MissionStep[]; // 동적 미션 스텝
   };
 }
 
@@ -52,26 +54,48 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [currentVerifyStep, setCurrentVerifyStep] = useState<number | null>(null);
-  const [steps, setSteps] = useState<Step[]>([
-    { title: "구매\n인증하기", status: "pending", imageUrl: undefined },
-    { title: "제품 리뷰\n인증하기", status: "pending", imageUrl: undefined },
-  ]);
+
+  // 동적 미션 스텝 (missionSteps가 있으면 사용, 없으면 기본 2개)
+  const missionSteps = challenge.missionSteps?.length
+    ? challenge.missionSteps
+    : [
+        {
+          order: 1,
+          title: "구매 인증하기",
+          description: "주문일, 주문번호, 주문상품이 보이도록 주문 상세정보를 캡처하여 인증해주세요.",
+          exampleImage: null,
+          deadline: challenge.purchaseDeadline,
+        },
+        {
+          order: 2,
+          title: "리뷰 인증하기",
+          description: "제품을 개봉하여 사용/섭취한 사진이 포함된 포토리뷰를 캡처하여 인증해주세요.",
+          exampleImage: null,
+          deadline: challenge.reviewDeadline,
+        },
+      ];
+
+  // UI용 스텝 상태
+  const [steps, setSteps] = useState<Step[]>(
+    missionSteps.map((ms) => ({
+      title: ms.title.replace(/ /g, "\n"), // 공백을 줄바꿈으로
+      status: "pending" as const,
+      imageUrl: undefined,
+      deadline: ms.deadline,
+      description: ms.description,
+      exampleImage: ms.exampleImage,
+    }))
+  );
   const [paybackStatus, setPaybackStatus] = useState<"pending" | "reviewing" | "paying" | "completed">("pending");
   const [participationStatus, setParticipationStatus] = useState<"pending" | "approved" | "rejected">("pending");
 
-  // 기한 체크: 교체 가능 여부 계산
+  // 기한 체크: 마지막 스텝의 기한을 기준으로
   const now = new Date();
-  const purchaseDeadlineDate = challenge.purchaseDeadline ? new Date(challenge.purchaseDeadline) : null;
-  const reviewDeadlineDate = challenge.reviewDeadline ? new Date(challenge.reviewDeadline) : null;
+  const lastStepDeadline = missionSteps[missionSteps.length - 1]?.deadline;
+  const isLastDeadlinePassed = lastStepDeadline ? now > new Date(lastStepDeadline) : false;
 
-  const isPurchaseDeadlinePassed = purchaseDeadlineDate ? now > purchaseDeadlineDate : false;
-  const isReviewDeadlinePassed = reviewDeadlineDate ? now > reviewDeadlineDate : false;
-
-  // 교체 가능 조건: 승인/거절 전 AND 기한 내
-  const canReplacePurchase = participationStatus === "pending" && !isPurchaseDeadlinePassed;
-  const canReplaceReview = participationStatus === "pending" && !isReviewDeadlinePassed;
-  // 전체 교체 가능 여부 (둘 다 가능해야 함 - 간단하게 리뷰 기한 기준)
-  const canReplace = participationStatus === "pending" && !isReviewDeadlinePassed;
+  // 교체 가능 조건: 승인/거절 전 AND 마지막 기한 내
+  const canReplace = participationStatus === "pending" && !isLastDeadlinePassed;
 
   // 임시 userId (나중에 실제 인증 시스템으로 교체)
   const userId = typeof window !== "undefined"
@@ -213,10 +237,10 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
             <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
               <span className="text-sm text-gray-600 flex items-center gap-1">
                 <Clock className="w-4 h-4" />
-                구매 인증 기한
+                {missionSteps[0]?.title || "인증"} 기한
               </span>
               <span className="text-sm font-medium text-gray-900">
-                {formatDeadline(challenge.purchaseDeadline)}
+                {formatDeadline(missionSteps[0]?.deadline || challenge.purchaseDeadline)}
               </span>
             </div>
 
@@ -327,6 +351,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
           <h3 className="text-base font-semibold text-gray-900 mb-4">페이백은 어떻게 받나요?</h3>
 
           <div className="space-y-4">
+            {/* 참가하기 (항상 첫 번째) */}
             <div className="flex gap-3">
               <span
                 className="flex-shrink-0 w-6 h-6 rounded-full text-white text-xs font-bold flex items-center justify-center"
@@ -340,41 +365,33 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
               </div>
             </div>
 
-            <div className="flex gap-3">
-              <span
-                className="flex-shrink-0 w-6 h-6 rounded-full text-white text-xs font-bold flex items-center justify-center"
-                style={{ backgroundColor: "#ff6600" }}
-              >
-                2
-              </span>
-              <div className="flex-1">
-                <p className="font-medium text-gray-900 mb-1">구매 인증</p>
-                <p className="text-sm text-gray-500 mb-2">주문 상세정보 캡처 후 이 페이지에서 업로드</p>
-                <img
-                  src="/order.png"
-                  alt="주문 인증 예시"
-                  className="w-full max-w-[200px] rounded-lg border border-gray-200 mx-auto block"
-                />
+            {/* 동적 미션 스텝들 */}
+            {missionSteps.map((step, index) => (
+              <div key={index} className="flex gap-3">
+                <span
+                  className="flex-shrink-0 w-6 h-6 rounded-full text-white text-xs font-bold flex items-center justify-center"
+                  style={{ backgroundColor: "#ff6600" }}
+                >
+                  {index + 2}
+                </span>
+                <div className="flex-1">
+                  <p className="font-medium text-gray-900 mb-1">{step.title}</p>
+                  <p className="text-sm text-gray-500 mb-2">{step.description}</p>
+                  {step.exampleImage && (
+                    <img
+                      src={step.exampleImage}
+                      alt={`${step.title} 예시`}
+                      className="w-full max-w-[200px] rounded-lg border border-gray-200 mx-auto block"
+                    />
+                  )}
+                  {step.deadline && (
+                    <p className="text-xs text-orange-500 mt-1">
+                      기한: {formatDeadline(step.deadline)}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-
-            <div className="flex gap-3">
-              <span
-                className="flex-shrink-0 w-6 h-6 rounded-full text-white text-xs font-bold flex items-center justify-center"
-                style={{ backgroundColor: "#ff6600" }}
-              >
-                3
-              </span>
-              <div className="flex-1">
-                <p className="font-medium text-gray-900 mb-1">리뷰 인증</p>
-                <p className="text-sm text-gray-500 mb-2">포토리뷰 작성 후 캡처하여 업로드</p>
-                <img
-                  src="/review.png"
-                  alt="리뷰 인증 예시"
-                  className="w-full max-w-[200px] rounded-lg border border-gray-200 mx-auto block"
-                />
-              </div>
-            </div>
+            ))}
           </div>
 
           <p className="text-xs text-gray-400 mt-4">※ 모든 인증은 기한 내 업로드 필수</p>
@@ -455,6 +472,9 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
         }}
         onSuccess={handleUploadSuccess}
         stepType={currentVerifyStep === 0 ? "purchase" : "review"}
+        stepOrder={currentVerifyStep !== null ? currentVerifyStep + 1 : 1}
+        stepTitle={currentVerifyStep !== null ? missionSteps[currentVerifyStep]?.title : ""}
+        stepDescription={currentVerifyStep !== null ? missionSteps[currentVerifyStep]?.description : ""}
         participationId={participationId || ""}
       />
     </>

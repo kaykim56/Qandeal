@@ -1,12 +1,21 @@
 // 챌린지 타입 정의
 
+// 미션 스텝 (커스텀 인증 단계)
+export interface MissionStep {
+  order: number;
+  title: string;
+  description: string;
+  exampleImage: string | null;
+  deadline: string; // ISO datetime
+}
+
 export interface Challenge {
   id: string;
   platform: string;
   title: string;
   option: string;
-  purchaseDeadline: string; // 구매 인증 기한 (ISO datetime)
-  reviewDeadline: string; // 리뷰 인증 기한 (ISO datetime)
+  purchaseDeadline: string; // 구매 인증 기한 (ISO datetime) - 하위 호환용
+  reviewDeadline: string; // 리뷰 인증 기한 (ISO datetime) - 하위 호환용
   originalPrice: number;
   paybackRate: number;
   paybackAmount: number;
@@ -14,6 +23,7 @@ export interface Challenge {
   productImage: string;
   productLink: string;
   detailImages: string[];
+  missionSteps: MissionStep[]; // 동적 미션 스텝
   status: "draft" | "published" | "deleted";
   createdBy?: string;
   createdAt: string;
@@ -39,8 +49,8 @@ export interface ChallengeInput {
   platform: string;
   title: string;
   option: string;
-  purchaseDeadline: string; // 구매 인증 기한 (ISO datetime)
-  reviewDeadline: string; // 리뷰 인증 기한 (ISO datetime)
+  purchaseDeadline: string; // 구매 인증 기한 (ISO datetime) - 하위 호환용
+  reviewDeadline: string; // 리뷰 인증 기한 (ISO datetime) - 하위 호환용
   originalPrice: number;
   paybackRate: number;
   paybackAmount: number;
@@ -48,6 +58,7 @@ export interface ChallengeInput {
   productImage: string;
   productLink: string;
   detailImages: string[];
+  missionSteps: MissionStep[]; // 동적 미션 스텝
   status: "draft" | "published";
 }
 

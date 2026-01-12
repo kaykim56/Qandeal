@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeft, Share2, Info, Clock } from "lucide-react";
+import { MissionStep } from "@/lib/types";
 
 interface ChallengePreviewProps {
   data: {
@@ -15,10 +16,34 @@ interface ChallengePreviewProps {
     productImage: string;
     productLink: string;
     detailImages?: string[];
+    missionSteps?: MissionStep[];
   };
 }
 
 export default function ChallengePreview({ data }: ChallengePreviewProps) {
+  // 동적 스텝 또는 기본 스텝
+  const missionSteps: MissionStep[] = data.missionSteps && data.missionSteps.length > 0
+    ? data.missionSteps
+    : [
+        {
+          order: 1,
+          title: "구매 인증하기",
+          description: "주문일, 주문번호, 주문상품이 보이도록 주문 상세정보를 캡처해주세요.",
+          exampleImage: null,
+          deadline: data.purchaseDeadline,
+        },
+        {
+          order: 2,
+          title: "리뷰 인증하기",
+          description: "구매처에 작성한 포토리뷰 화면을 캡처해주세요.",
+          exampleImage: null,
+          deadline: "",
+        },
+      ];
+
+  // 첫 번째 스텝의 기한 (가격 정보에 표시)
+  const firstStepDeadline = missionSteps[0]?.deadline || data.purchaseDeadline;
+
   // 날짜 포맷
   const formatDeadline = (dateStr: string) => {
     if (!dateStr) return "미정";
@@ -90,10 +115,10 @@ export default function ChallengePreview({ data }: ChallengePreviewProps) {
             <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
               <span className="text-sm text-gray-600 flex items-center gap-1">
                 <Clock className="w-4 h-4" />
-                구매 인증 기한
+                {missionSteps[0]?.title || "인증"} 기한
               </span>
               <span className="text-sm font-medium text-gray-900">
-                {formatDeadline(data.purchaseDeadline)}
+                {formatDeadline(firstStepDeadline)}
               </span>
             </div>
 
@@ -147,20 +172,31 @@ export default function ChallengePreview({ data }: ChallengePreviewProps) {
           </div>
         </section>
 
-        {/* 미션 섹션 (간략히) */}
+        {/* 미션 섹션 (동적 스텝) */}
         <section className="bg-white px-4 py-5 border-b border-gray-100">
-          <div className="flex items-center gap-3 mb-4">
-            <span
-              className="flex items-center justify-center w-6 h-6 text-white text-xs font-bold rounded-full"
-              style={{ backgroundColor: "#ff6600" }}
-            >
-              1
-            </span>
-            <span className="text-base font-semibold text-gray-900">구매 인증하기</span>
-          </div>
-          <div className="pl-9 text-sm text-gray-500">
-            <p>1) 주문 상세정보를 캡처해주세요.</p>
-            <p className="mt-1">2) 기간 내로 앱에 인증해주세요.</p>
+          <h3 className="text-sm font-semibold text-gray-900 mb-4">미션 스텝</h3>
+          <div className="space-y-4">
+            {missionSteps.map((step, index) => (
+              <div key={step.order}>
+                <div className="flex items-center gap-3 mb-2">
+                  <span
+                    className="flex items-center justify-center w-6 h-6 text-white text-xs font-bold rounded-full"
+                    style={{ backgroundColor: "#ff6600" }}
+                  >
+                    {index + 1}
+                  </span>
+                  <span className="text-base font-semibold text-gray-900">{step.title}</span>
+                </div>
+                <div className="pl-9 text-sm text-gray-500">
+                  <p>{step.description}</p>
+                  {step.deadline && (
+                    <p className="mt-1 text-xs text-gray-400">
+                      기한: {formatDeadline(step.deadline)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 

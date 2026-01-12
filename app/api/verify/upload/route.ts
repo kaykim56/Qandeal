@@ -9,6 +9,8 @@ export async function POST(request: Request): Promise<NextResponse> {
     const file = formData.get("file") as File | null;
     const participationId = formData.get("participationId") as string;
     const stepType = formData.get("stepType") as "purchase" | "review";
+    const stepOrderStr = formData.get("stepOrder") as string | null;
+    const stepOrder = stepOrderStr ? parseInt(stepOrderStr, 10) : undefined;
 
     if (!file) {
       return NextResponse.json({ error: "파일이 없습니다" }, { status: 400 });
@@ -38,7 +40,9 @@ export async function POST(request: Request): Promise<NextResponse> {
     const timestamp = Date.now();
     const dateStr = new Date().toISOString().split("T")[0];
     const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-    const pathname = `participations/${participationId}/${stepType}/${dateStr}_${timestamp}_${sanitizedFilename}`;
+    // 동적 스텝인 경우 step-{order}, 기존 형식인 경우 stepType 사용
+    const stepFolder = stepOrder !== undefined ? `step-${stepOrder}` : stepType;
+    const pathname = `participations/${participationId}/${stepFolder}/${dateStr}_${timestamp}_${sanitizedFilename}`;
 
     // Vercel Blob에 업로드
     const blob = await put(pathname, file, {
@@ -47,7 +51,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     });
 
     // Google Sheets에서 참여 레코드 업데이트
-    await updateParticipationImage(participationId, stepType, blob.url);
+    await updateParticipationImage(participationId, stepType, blob.url, stepOrder);
 
     return NextResponse.json({
       success: true,

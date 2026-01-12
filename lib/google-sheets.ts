@@ -1,5 +1,5 @@
 import { google } from "googleapis";
-import { Challenge, ChallengeInput, ChallengeWithMissions, Mission } from "./types";
+import { Challenge, ChallengeInput, ChallengeWithMissions, Mission, MissionStep } from "./types";
 
 // Google Sheets 인증
 function getAuth() {
@@ -54,17 +54,20 @@ export async function getChallengeById(id: string): Promise<ChallengeWithMission
   const row = rows.find((r) => r[0] === id);
   if (!row) return null;
 
-  const challenge = rowToChallenge(row);
-
-  // 미션은 기본 템플릿 사용 (예시 이미지만 Sheets에서 가져옴)
+  // 미션 데이터 가져오기
   const missionsResponse = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: "missions!A2:G",
+    range: "missions!A2:D",
   });
 
   const missionRows = missionsResponse.data.values || [];
   const missionData = missionRows.find((r) => r[1] === id);
 
+  // missionSteps 파싱 (하위 호환성 지원)
+  const missionSteps = parseMissionSteps(missionData, row[16] || "", row[17] || "");
+  const challenge = rowToChallenge(row, missionSteps);
+
+  // 기존 Mission 형식도 유지 (하위 호환)
   const missions = getDefaultMissions(id, missionData);
 
   return { ...challenge, missions };
@@ -74,6 +77,10 @@ export async function createChallenge(input: ChallengeInput, createdBy?: string)
   const sheets = getSheets();
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
+
+  // missionSteps에서 첫 번째 스텝의 deadline을 purchaseDeadline으로 사용 (하위 호환)
+  const purchaseDeadline = input.missionSteps?.[0]?.deadline || input.purchaseDeadline || "";
+  const reviewDeadline = input.missionSteps?.[1]?.deadline || input.reviewDeadline || "";
 
   const row = [
     id,
@@ -92,8 +99,8 @@ export async function createChallenge(input: ChallengeInput, createdBy?: string)
     now,
     now,
     createdBy || "",
-    input.purchaseDeadline || "", // 구매 인증 기한
-    input.reviewDeadline || "", // 리뷰 인증 기한
+    purchaseDeadline, // 구매 인증 기한 (하위 호환용)
+    reviewDeadline, // 리뷰 인증 기한 (하위 호환용)
   ];
 
   await sheets.spreadsheets.values.append({
@@ -103,17 +110,17 @@ export async function createChallenge(input: ChallengeInput, createdBy?: string)
     requestBody: { values: [row] },
   });
 
-  // 미션 기본 데이터 생성 (예시 이미지 빈 값)
+  // 미션 스텝 데이터 생성 (새 형식: stepsJson)
+  const missionSteps = input.missionSteps || getDefaultSteps(purchaseDeadline, reviewDeadline, null, null);
   const missionRow = [
     crypto.randomUUID(),
     id,
-    "", // 구매 인증 예시 이미지
-    "", // 리뷰 인증 예시 이미지
+    JSON.stringify(missionSteps), // stepsJson
   ];
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: SHEET_ID,
-    range: "missions!A:D",
+    range: "missions!A:C",
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [missionRow] },
   });
@@ -137,6 +144,10 @@ export async function updateChallenge(id: string, input: Partial<ChallengeInput>
   const existing = rowToChallenge(rows[rowIndex]);
   const updated = { ...existing, ...input, updatedAt: new Date().toISOString() };
 
+  // missionSteps에서 deadline 추출 (하위 호환용)
+  const purchaseDeadline = updated.missionSteps?.[0]?.deadline || updated.purchaseDeadline || "";
+  const reviewDeadline = updated.missionSteps?.[1]?.deadline || updated.reviewDeadline || "";
+
   const row = [
     updated.id,
     updated.platform,
@@ -154,8 +165,8 @@ export async function updateChallenge(id: string, input: Partial<ChallengeInput>
     updated.createdAt,
     updated.updatedAt,
     updated.createdBy || "",
-    updated.purchaseDeadline || "",
-    updated.reviewDeadline || "",
+    purchaseDeadline,
+    reviewDeadline,
   ];
 
   await sheets.spreadsheets.values.update({
@@ -164,6 +175,11 @@ export async function updateChallenge(id: string, input: Partial<ChallengeInput>
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [row] },
   });
+
+  // missionSteps가 있으면 missions 시트도 업데이트
+  if (input.missionSteps) {
+    await updateMissionSteps(id, input.missionSteps);
+  }
 
   return true;
 }
@@ -193,7 +209,7 @@ export async function deleteChallenge(id: string): Promise<boolean> {
   return true;
 }
 
-// 미션 예시 이미지 업데이트
+// 미션 예시 이미지 업데이트 (구 형식 - 하위 호환용)
 export async function updateMissionImages(
   challengeId: string,
   purchaseImage: string,
@@ -226,6 +242,46 @@ export async function updateMissionImages(
       range: `missions!C${rowIndex + 2}:D${rowIndex + 2}`,
       valueInputOption: "USER_ENTERED",
       requestBody: { values: [[purchaseImage, reviewImage]] },
+    });
+  }
+
+  return true;
+}
+
+// 미션 스텝 업데이트 (새 형식)
+export async function updateMissionSteps(
+  challengeId: string,
+  steps: MissionStep[]
+): Promise<boolean> {
+  const sheets = getSheets();
+
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID,
+    range: "missions!A2:C",
+  });
+
+  const rows = response.data.values || [];
+  const rowIndex = rows.findIndex((r) => r[1] === challengeId);
+
+  const stepsJson = JSON.stringify(steps);
+
+  if (rowIndex === -1) {
+    // 새로 생성
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID,
+      range: "missions!A:C",
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [[crypto.randomUUID(), challengeId, stepsJson]],
+      },
+    });
+  } else {
+    // 업데이트
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `missions!C${rowIndex + 2}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values: [[stepsJson]] },
     });
   }
 
@@ -304,11 +360,12 @@ export async function getParticipation(
 export async function updateParticipationImage(
   participationId: string,
   stepType: "purchase" | "review",
-  imageUrl: string
+  imageUrl: string,
+  stepOrder?: number
 ): Promise<boolean> {
   const sheets = getSheets();
 
-  console.log(`[updateParticipationImage] participationId: ${participationId}, stepType: ${stepType}`);
+  console.log(`[updateParticipationImage] participationId: ${participationId}, stepType: ${stepType}, stepOrder: ${stepOrder}`);
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
@@ -326,7 +383,15 @@ export async function updateParticipationImage(
     return false;
   }
 
-  const column = stepType === "purchase" ? "D" : "E";
+  // 동적 스텝 지원: stepOrder가 주어지면 그에 맞는 컬럼 사용
+  // stepOrder 1 → D (purchaseImageUrl), stepOrder 2 → E (reviewImageUrl)
+  // stepOrder가 없으면 기존 stepType 로직 사용
+  let column: string;
+  if (stepOrder !== undefined) {
+    column = stepOrder === 1 ? "D" : "E";
+  } else {
+    column = stepType === "purchase" ? "D" : "E";
+  }
   const sheetRow = rowIndex + 2; // +2 because A2 starts at index 0
 
   console.log(`[updateParticipationImage] Updating column ${column}, row ${sheetRow}`);
@@ -338,7 +403,7 @@ export async function updateParticipationImage(
     requestBody: { values: [[imageUrl]] },
   });
 
-  console.log(`[updateParticipationImage] Successfully updated ${stepType} image`);
+  console.log(`[updateParticipationImage] Successfully updated step ${stepOrder ?? stepType} image`);
   return true;
 }
 
@@ -433,7 +498,25 @@ function parseDetailImages(value: string): string[] {
   }
 }
 
-function rowToChallenge(row: string[]): Challenge {
+function rowToChallenge(row: string[], missionSteps?: MissionStep[]): Challenge {
+  // 구 형식 데이터에서 기본 스텝 생성 (missionSteps가 없는 경우)
+  const defaultSteps: MissionStep[] = [
+    {
+      order: 1,
+      title: "구매 인증하기",
+      description: "주문일, 주문번호, 주문상품이 보이도록 주문 상세정보를 캡처하여 인증해주세요.",
+      exampleImage: null,
+      deadline: row[16] || "", // 구 purchaseDeadline
+    },
+    {
+      order: 2,
+      title: "리뷰 인증하기",
+      description: "제품을 개봉하여 사용/섭취한 사진이 포함된 포토리뷰를 캡처하여 인증해주세요.",
+      exampleImage: null,
+      deadline: row[17] || "", // 구 reviewDeadline
+    },
+  ];
+
   return {
     id: row[0] || "",
     platform: row[1] || "",
@@ -447,13 +530,61 @@ function rowToChallenge(row: string[]): Challenge {
     productImage: row[9] || "",
     productLink: row[10] || "",
     detailImages: parseDetailImages(row[11]),
+    missionSteps: missionSteps || defaultSteps,
     status: (row[12] as "draft" | "published") || "draft",
     createdAt: row[13] || "",
     updatedAt: row[14] || "",
     createdBy: row[15] || "",
-    purchaseDeadline: row[16] || "", // 구매 인증 기한
-    reviewDeadline: row[17] || "", // 리뷰 인증 기한
+    purchaseDeadline: row[16] || "", // 구매 인증 기한 (하위 호환용)
+    reviewDeadline: row[17] || "", // 리뷰 인증 기한 (하위 호환용)
   };
+}
+
+// missionSteps 파싱 (하위 호환성 지원)
+function parseMissionSteps(missionData: string[] | undefined, purchaseDeadline: string, reviewDeadline: string): MissionStep[] {
+  if (!missionData || !missionData[2]) {
+    // 데이터가 없으면 기본 스텝 반환
+    return getDefaultSteps(purchaseDeadline, reviewDeadline, null, null);
+  }
+
+  // 새 형식: stepsJson이 JSON 배열로 저장됨
+  if (missionData[2].startsWith("[")) {
+    try {
+      return JSON.parse(missionData[2]);
+    } catch {
+      return getDefaultSteps(purchaseDeadline, reviewDeadline, null, null);
+    }
+  }
+
+  // 구 형식: purchaseExampleImage (C열), reviewExampleImage (D열)
+  const purchaseExampleImage = missionData[2] || null;
+  const reviewExampleImage = missionData[3] || null;
+  return getDefaultSteps(purchaseDeadline, reviewDeadline, purchaseExampleImage, reviewExampleImage);
+}
+
+// 기본 스텝 생성 (구 형식 호환)
+function getDefaultSteps(
+  purchaseDeadline: string,
+  reviewDeadline: string,
+  purchaseExampleImage: string | null,
+  reviewExampleImage: string | null
+): MissionStep[] {
+  return [
+    {
+      order: 1,
+      title: "구매 인증하기",
+      description: "주문일, 주문번호, 주문상품이 보이도록 주문 상세정보를 캡처하여 인증해주세요.",
+      exampleImage: purchaseExampleImage,
+      deadline: purchaseDeadline,
+    },
+    {
+      order: 2,
+      title: "리뷰 인증하기",
+      description: "제품을 개봉하여 사용/섭취한 사진이 포함된 포토리뷰를 캡처하여 인증해주세요.",
+      exampleImage: reviewExampleImage,
+      deadline: reviewDeadline,
+    },
+  ];
 }
 
 // 기본 미션 템플릿
