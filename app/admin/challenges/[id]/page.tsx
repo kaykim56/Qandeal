@@ -690,9 +690,7 @@ export default function EditChallengePage() {
                       </div>
                     </div>
 
-                    {/* 유형 선택 후에만 상세 필드 표시 */}
-                    {(step.title || step.description) ? (
-                    <>
+                    {/* 상세 필드 - 항상 표시 */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         제목 *
@@ -804,12 +802,6 @@ export default function EditChallengePage() {
                           </div>
                         ))}
                       </div>
-                    )}
-                    </>
-                    ) : (
-                      <p className="text-sm text-gray-400 text-center py-4">
-                        위에서 유형을 선택하면 상세 설정이 표시됩니다
-                      </p>
                     )}
                   </div>
                 </div>
