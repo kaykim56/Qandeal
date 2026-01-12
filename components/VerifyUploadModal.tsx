@@ -194,14 +194,14 @@ export default function VerifyUploadModal({
           {/* 예시 이미지들 */}
           {exampleImages.length > 0 && (
             <div className="mb-4 p-3 bg-orange-50 rounded-xl">
-              <p className="text-xs font-medium text-orange-600 mb-2">예시 이미지</p>
-              <div className="flex gap-2 overflow-x-auto">
+              <p className="text-xs font-medium text-orange-600 mb-2 text-center">예시 이미지</p>
+              <div className="flex flex-col items-center gap-3">
                 {exampleImages.map((img, idx) => (
                   <img
                     key={idx}
                     src={img}
                     alt={`예시 ${idx + 1}`}
-                    className="w-24 h-24 object-cover rounded-lg border border-orange-200 flex-shrink-0"
+                    className="max-w-[180px] rounded-lg border border-orange-200"
                   />
                 ))}
               </div>
