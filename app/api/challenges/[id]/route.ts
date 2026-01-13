@@ -37,16 +37,16 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    // 미션 이미지가 있으면 별도 업데이트
-    if (body.purchaseExampleImage !== undefined || body.reviewExampleImage !== undefined) {
+    // missionSteps가 있으면 새 형식 사용, 없을 때만 구 형식 사용
+    if (!body.missionSteps && (body.purchaseExampleImage || body.reviewExampleImage)) {
       await updateMissionImages(
         id,
         body.purchaseExampleImage || "",
         body.reviewExampleImage || ""
       );
-      delete body.purchaseExampleImage;
-      delete body.reviewExampleImage;
     }
+    delete body.purchaseExampleImage;
+    delete body.reviewExampleImage;
 
     const success = await updateChallenge(id, body);
 
