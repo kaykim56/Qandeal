@@ -640,8 +640,9 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
             {challenge.platform === "쿠팡" && (
               <div className="px-3 py-2.5 rounded-lg mb-4 bg-gray-100">
                 <p className="text-sm font-medium text-gray-700 text-center">
-                  쿠팡 와우 회원이 아니라면,<br />
-                  19,800원 채워야 구매가 가능해요
+                  와우회원/일반회원 모두 구매 가능하지만,<br />
+                  일반회원일 경우 로켓배송 상품 19,800원 이상<br />
+                  구매해야 배송이 가능해요
                 </p>
               </div>
             )}
