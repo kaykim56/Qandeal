@@ -46,7 +46,7 @@ export default function ParticipateModal({
         {/* 텍스트 */}
         <div className="text-center mb-6">
           <h2 className="text-xl font-bold text-gray-900 mb-1">
-            챌린지 참가 완료!
+            신청이 완료되었어요!
           </h2>
           <p className="text-gray-600">
             이제 제품을 구매하고 인증해주세요

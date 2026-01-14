@@ -27,7 +27,10 @@ export default function EditChallengePage() {
     option: "",
     purchaseDeadline: "",
     reviewDeadline: "",
-    originalPrice: 0,
+    productPrice: 0, // 상품가 (배송비 제외)
+    hasShippingFee: false, // 배송비 유무
+    shippingFee: 0, // 배송비
+    originalPrice: 0, // 구매가 (상품가 + 배송비)
     paybackRate: 0,
     paybackAmount: 0,
     finalPrice: 0,
@@ -103,6 +106,11 @@ export default function EditChallengePage() {
         deadline: formatDate(step.deadline),
       }));
 
+      // 하위 호환: productPrice가 없으면 originalPrice 사용
+      const productPrice = (data as any).productPrice || data.originalPrice;
+      const hasShippingFee = (data as any).hasShippingFee || false;
+      const shippingFee = (data as any).shippingFee || 0;
+
       setForm({
         platform: data.platform,
         title: data.title,
@@ -110,6 +118,9 @@ export default function EditChallengePage() {
         option: data.option,
         purchaseDeadline: formatDate(data.purchaseDeadline),
         reviewDeadline: formatDate(data.reviewDeadline),
+        productPrice,
+        hasShippingFee,
+        shippingFee,
         originalPrice: data.originalPrice,
         paybackRate: data.paybackRate,
         paybackAmount: data.paybackAmount,
@@ -130,12 +141,21 @@ export default function EditChallengePage() {
     }
   };
 
-  // 페이백 금액 자동 계산
+  // 구매가 자동 계산 (상품가 + 배송비)
   useEffect(() => {
-    const paybackAmount = Math.round(form.originalPrice * (form.paybackRate / 100));
-    const finalPrice = form.originalPrice - paybackAmount;
-    setForm((prev) => ({ ...prev, paybackAmount, finalPrice }));
-  }, [form.originalPrice, form.paybackRate]);
+    const shippingFee = form.hasShippingFee ? form.shippingFee : 0;
+    const originalPrice = form.productPrice + shippingFee;
+    setForm((prev) => ({ ...prev, originalPrice }));
+  }, [form.productPrice, form.hasShippingFee, form.shippingFee]);
+
+  // 페이백 비율 & 실구매가 자동 계산 (페이백 금액 기준)
+  useEffect(() => {
+    const paybackRate = form.originalPrice > 0
+      ? Math.round((form.paybackAmount / form.originalPrice) * 100)
+      : 0;
+    const finalPrice = form.originalPrice - form.paybackAmount;
+    setForm((prev) => ({ ...prev, paybackRate, finalPrice }));
+  }, [form.originalPrice, form.paybackAmount]);
 
   // 상세 이미지 추가
   const addDetailImage = () => {
@@ -331,8 +351,8 @@ export default function EditChallengePage() {
       if (!step.description.trim()) return { field: `step-${i}-description`, message: `스텝 ${i + 1}의 설명을 입력해주세요` };
       if (!step.deadline) return { field: `step-${i}-deadline`, message: `스텝 ${i + 1}의 기한을 입력해주세요` };
     }
-    if (!form.originalPrice || form.originalPrice <= 0) return { field: "originalPrice", message: "구매가를 입력해주세요" };
-    if (!form.paybackRate || form.paybackRate <= 0) return { field: "paybackRate", message: "페이백 비율을 입력해주세요" };
+    if (!form.productPrice || form.productPrice <= 0) return { field: "productPrice", message: "상품가를 입력해주세요" };
+    if (!form.paybackAmount || form.paybackAmount <= 0) return { field: "paybackAmount", message: "페이백 금액을 입력해주세요" };
     if (!form.productLink.trim()) return { field: "productLink", message: "제품 링크를 입력해주세요" };
     if (form.hasSpecificOption && !form.option.trim()) return { field: "option", message: "옵션을 입력하거나 옵션 지정을 해제해주세요" };
     return null;
@@ -535,13 +555,13 @@ export default function EditChallengePage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  구매가 (원) *
+                  상품가 (원) *
                 </label>
                 <input
-                  id="originalPrice"
+                  id="productPrice"
                   type="number"
-                  value={form.originalPrice || ""}
-                  onChange={(e) => setForm({ ...form, originalPrice: Number(e.target.value) })}
+                  value={form.productPrice || ""}
+                  onChange={(e) => setForm({ ...form, productPrice: Number(e.target.value) })}
                   placeholder="30000"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   required
@@ -549,16 +569,59 @@ export default function EditChallengePage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  페이백 (%) *
+                  배송비
+                </label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, hasShippingFee: !form.hasShippingFee, shippingFee: 0 })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${
+                      form.hasShippingFee ? "bg-orange-500" : "bg-gray-300"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        form.hasShippingFee ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                  {form.hasShippingFee ? (
+                    <input
+                      type="number"
+                      value={form.shippingFee || ""}
+                      onChange={(e) => setForm({ ...form, shippingFee: Number(e.target.value) })}
+                      placeholder="3000"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    />
+                  ) : (
+                    <span className="text-sm text-gray-500">무료배송</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  구매가 (자동계산)
+                </label>
+                <div className="px-3 py-2 bg-gray-100 rounded-lg font-medium">
+                  {form.originalPrice.toLocaleString()}원
+                  {form.hasShippingFee && form.shippingFee > 0 && (
+                    <span className="text-xs text-gray-500 ml-1">
+                      (상품 {form.productPrice.toLocaleString()} + 배송 {form.shippingFee.toLocaleString()})
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  페이백 금액 (원) *
                 </label>
                 <input
-                  id="paybackRate"
+                  id="paybackAmount"
                   type="number"
-                  value={form.paybackRate || ""}
-                  onChange={(e) => setForm({ ...form, paybackRate: Number(e.target.value) })}
-                  placeholder="40"
+                  value={form.paybackAmount || ""}
+                  onChange={(e) => setForm({ ...form, paybackAmount: Number(e.target.value) })}
+                  placeholder="12000"
                   min="0"
-                  max="100"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   required
                 />
@@ -573,10 +636,10 @@ export default function EditChallengePage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  페이백 금액 (자동계산)
+                  페이백 비율 (자동계산)
                 </label>
                 <div className="px-3 py-2 bg-gray-100 rounded-lg text-orange-500 font-medium">
-                  {form.paybackAmount.toLocaleString()}원
+                  {form.paybackRate}%
                 </div>
               </div>
             </div>

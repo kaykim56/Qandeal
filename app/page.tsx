@@ -33,61 +33,76 @@ export default async function Home() {
             <p className="text-sm text-gray-400 mt-1">곧 새로운 득템이 올라올 예정이에요!</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {challenges.map((challenge) => (
+          <div className="space-y-3">
+            {challenges.map((challenge) => {
+              // 저장된 페이백 금액 사용, 실구매가 계산
+              const finalPrice = challenge.originalPrice - challenge.paybackAmount;
+
+              return (
               <Link
                 key={challenge.id}
                 href={`/challenge/${challenge.id}`}
-                className="block bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                className="flex bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
               >
                 {/* 상품 이미지 */}
-                <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
+                <div className="w-28 flex-shrink-0 bg-gray-100 relative">
                   {challenge.productImage ? (
                     <img
                       src={challenge.productImage}
                       alt={challenge.title}
-                      className="w-full h-full object-cover"
+                      className="absolute inset-0 w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300">
-                      <span className="text-5xl">🎁</span>
+                    <div className="absolute inset-0 flex items-center justify-center text-gray-300">
+                      <span className="text-2xl">🎁</span>
                     </div>
                   )}
                   {/* 페이백 뱃지 */}
-                  <div className="absolute top-3 left-3">
-                    <span className="inline-block px-2.5 py-1 bg-orange-500 text-white text-sm font-bold rounded-lg">
-                      {challenge.paybackRate}% 페이백
+                  <div className="absolute top-1.5 left-1.5">
+                    <span className="inline-block px-1.5 py-0.5 bg-orange-500 text-white text-[10px] font-bold rounded">
+                      {challenge.paybackRate}%
                     </span>
                   </div>
                 </div>
 
                 {/* 상품 정보 */}
-                <div className="p-4">
-                  {/* 플랫폼 */}
-                  <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-medium rounded mb-2">
-                    {challenge.platform}
-                  </span>
+                <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
+                  <div>
+                    {/* 플랫폼 */}
+                    <span className={`inline-block px-1.5 py-0.5 text-[10px] font-medium rounded mb-1 ${
+                      challenge.platform.includes("카카오")
+                        ? "bg-yellow-400 text-yellow-900"
+                        : challenge.platform.includes("쿠팡")
+                        ? "bg-blue-500 text-white"
+                        : challenge.platform.includes("올리브영")
+                        ? "bg-green-600 text-white"
+                        : "bg-gray-100 text-gray-500"
+                    }`}>
+                      {challenge.platform}
+                    </span>
 
-                  {/* 제목 */}
-                  <h2 className="text-base font-semibold text-gray-900 line-clamp-2 mb-2">
-                    {challenge.title}
-                  </h2>
+                    {/* 제목 */}
+                    <h2 className="text-sm font-semibold text-gray-900 line-clamp-2">
+                      {challenge.title}
+                    </h2>
+                  </div>
 
                   {/* 가격 정보 */}
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-lg font-bold text-gray-900">
-                      {challenge.finalPrice.toLocaleString()}원
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-base font-bold text-gray-900">
+                      {finalPrice.toLocaleString()}원
                     </span>
-                    <span className="text-sm text-gray-400 line-through">
+                    <span className="text-xs text-gray-400 line-through">
                       {challenge.originalPrice.toLocaleString()}원
                     </span>
-                    <span className="text-sm font-medium text-orange-500">
-                      {challenge.paybackAmount.toLocaleString()}원 돌려받기
+                    <span className="text-xs font-medium text-orange-500">
+                      {challenge.paybackAmount.toLocaleString()}원 페이백
                     </span>
                   </div>
                 </div>
               </Link>
-            ))}
+            );
+            })}
           </div>
         )}
       </main>

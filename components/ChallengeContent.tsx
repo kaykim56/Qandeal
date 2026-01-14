@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { Info, Clock } from "lucide-react";
+import { Info, Clock, Check, ChevronUp } from "lucide-react";
 import MissionSteps, { Step } from "./MissionSteps";
-import ParticipateModal from "./ParticipateModal";
 import VerifyUploadModal from "./VerifyUploadModal";
+import PhoneVerificationModal from "./PhoneVerificationModal";
 import Link from "next/link";
 import { MissionStep } from "@/lib/types";
 
@@ -46,9 +46,26 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
   const { data: session } = useSession();
   const [hasParticipated, setHasParticipated] = useState(false);
   const [participationId, setParticipationId] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isPhoneVerificationOpen, setIsPhoneVerificationOpen] = useState(false);
   const [currentVerifyStep, setCurrentVerifyStep] = useState<number | null>(null);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [resetClickCount, setResetClickCount] = useState(0);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  // 스크롤 위치 감지
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // 맨 위로 스크롤
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   // 동적 미션 스텝 (missionSteps가 있으면 사용, 없으면 기본 2개)
   const missionSteps = challenge.missionSteps?.length
@@ -91,6 +108,10 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
 
   // 교체 가능 조건: 승인/거절 전 AND 마지막 기한 내
   const canReplace = participationStatus === "pending" && !isLastDeadlinePassed;
+
+  // 테스터 여부 확인
+  const allowedEmails = (process.env.NEXT_PUBLIC_ALLOWED_EMAILS || "").split(",");
+  const isTester = session?.user?.email && allowedEmails.includes(session.user.email);
 
   // 임시 userId (나중에 실제 인증 시스템으로 교체)
   const userId = typeof window !== "undefined"
@@ -145,7 +166,20 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
     }
   }, [challenge.id, userId]);
 
-  const handleParticipate = async () => {
+  // 참가하기 버튼 클릭 → 전화번호 인증 모달 열기
+  const handleParticipate = () => {
+    setIsPhoneVerificationOpen(true);
+  };
+
+  // 전화번호 인증 완료 후 참가 처리
+  const handlePhoneVerified = async (phoneNumber: string, verificationToken: string) => {
+    setIsPhoneVerificationOpen(false);
+
+    // 즉시 성공 상태로 전환 (옵티미스틱 UI)
+    setHasParticipated(true);
+    setShowSuccessToast(true);
+
+    // 백그라운드에서 참가 등록
     try {
       const res = await fetch("/api/participations", {
         method: "POST",
@@ -153,18 +187,27 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
         body: JSON.stringify({
           challengeId: challenge.id,
           userId,
-          testerEmail: session?.user?.email || undefined, // 어드민 로그인 시 이메일 전달
+          testerEmail: session?.user?.email || undefined,
+          phoneNumber,
+          verificationToken,
         }),
       });
 
       const data = await res.json();
       if (data.success) {
         setParticipationId(data.participationId);
-        setHasParticipated(true);
-        setIsModalOpen(true);
+      } else {
+        // 실패 시 롤백
+        console.error("참가 등록 실패:", data.error);
+        setHasParticipated(false);
+        setShowSuccessToast(false);
+        alert(data.error || "참가 중 오류가 발생했습니다");
       }
     } catch (error) {
+      // 실패 시 롤백
       console.error("Failed to participate:", error);
+      setHasParticipated(false);
+      setShowSuccessToast(false);
       alert("참가 중 오류가 발생했습니다");
     }
   };
@@ -192,6 +235,41 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
     setCurrentVerifyStep(null);
   };
 
+  // 테스터 참여 기록 초기화
+  const handleResetParticipation = async () => {
+    if (!confirm("참여 기록을 초기화하시겠습니까?")) return;
+
+    try {
+      const res = await fetch(
+        `/api/participations?challengeId=${challenge.id}&userId=${userId}`,
+        { method: "DELETE" }
+      );
+
+      if (res.ok) {
+        // 상태 초기화
+        setHasParticipated(false);
+        setParticipationId(null);
+        setSteps(
+          missionSteps.map((ms) => ({
+            title: ms.title.replace(/ /g, "\n"),
+            status: "pending" as const,
+            imageUrl: undefined,
+            deadline: ms.deadline,
+            description: ms.description,
+            exampleImages: ms.exampleImages || [],
+          }))
+        );
+        setPaybackStatus("pending");
+        setParticipationStatus("pending");
+      } else {
+        alert("초기화에 실패했습니다");
+      }
+    } catch (error) {
+      console.error("Failed to reset participation:", error);
+      alert("초기화에 실패했습니다");
+    }
+  };
+
   const getNoticeText = () => {
     if (paybackStatus === "completed") return "환급이 완료되었습니다!";
     if (paybackStatus === "paying") return "환급이 진행 중입니다!";
@@ -217,6 +295,15 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
           <p className="text-sm text-gray-500 mb-4">옵션 지정 | {challenge.option}</p>
         )}
 
+        {/* 카카오 선물하기 안내 */}
+        {challenge.platform === "카카오 선물하기" && (
+          <div className="px-3 py-2.5 rounded-lg mb-4 bg-gray-100">
+            <p className="text-sm font-medium text-gray-700">
+              &apos;나에게 선물&apos;로만 참여가 가능합니다.
+            </p>
+          </div>
+        )}
+
         {/* 참여 전: 가격 정보 테이블 / 참여 후: 미션 스텝 */}
         {hasParticipated ? (
           <MissionSteps
@@ -228,19 +315,27 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
             noticeText={getNoticeText()}
           />
         ) : (
-          <div className="border border-gray-200 rounded-lg overflow-hidden">
-            <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
-              <span className="text-sm text-gray-600 flex items-center gap-1">
-                <Clock className="w-4 h-4" />
-                {missionSteps[0]?.title || "인증"} 기한
-              </span>
-              <span className="text-sm font-medium text-gray-900">
+          <>
+            {/* 구매 시간 강조 */}
+            <div
+              className="flex items-center justify-between px-4 py-3 rounded-lg mb-3"
+              style={{ backgroundColor: "#ffdfb8" }}
+            >
+              <div className="flex items-center gap-2">
+                <Clock className="w-5 h-5" style={{ color: "#cc4400" }} />
+                <span className="font-bold" style={{ color: "#cc4400" }}>구매 시간</span>
+              </div>
+              <span className="font-bold text-lg" style={{ color: "#cc4400" }}>
                 {formatDeadline(missionSteps[0]?.deadline || challenge.purchaseDeadline)}
               </span>
             </div>
+            <p className="text-xs text-gray-500 mb-3 text-center">
+              ⚠️ 위 날짜에 구매하고, 당일 인증해야 페이백을 받을 수 있어요!
+            </p>
 
-            <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
-              <span className="text-sm text-gray-600">구매가</span>
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
+                <span className="text-sm text-gray-600">구매가</span>
               <span className="text-sm text-gray-900">
                 {challenge.originalPrice.toLocaleString()}원
               </span>
@@ -273,76 +368,104 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
                 {challenge.finalPrice.toLocaleString()}원
               </span>
             </div>
-          </div>
+            </div>
+          </>
         )}
       </section>
 
-      {/* 페이백 안내 섹션 - 참여 전에만 표시 */}
-      {!hasParticipated && (
-        <section className="mt-2 bg-white px-4 py-6">
-          {/* 강조 문구 */}
-          <p className="text-center text-gray-800 font-medium mb-5">
-            제품 구매 후 리뷰 인증하면{" "}
-            <span style={{ color: "#ff6600" }} className="font-bold">
-              {challenge.paybackRate}%
-            </span>
-            를 돌려드려요!
-          </p>
+      {/* 네이버페이 쿠폰 카드 - 항상 표시 */}
+      <section className="mt-2 bg-white px-4 py-6">
+        {/* 강조 문구 */}
+        <p className="text-center text-gray-800 font-medium mb-5">
+          {hasParticipated ? (
+            <>
+              인증 완료 시{" "}
+              <span style={{ color: "#ff6600" }} className="font-bold">
+                {challenge.paybackAmount.toLocaleString()}원
+              </span>
+              을 돌려드려요!
+            </>
+          ) : (
+            <>
+              제품 구매 후 리뷰 인증하면{" "}
+              <span style={{ color: "#ff6600" }} className="font-bold">
+                {challenge.paybackRate}%
+              </span>
+              를 돌려드려요!
+            </>
+          )}
+        </p>
 
-          {/* 페이백 카드 */}
-          <div
-            className="relative rounded-2xl overflow-hidden mb-6 mx-auto"
-            style={{ backgroundColor: "#ff6600", maxWidth: "280px" }}
-          >
-            {/* 배경 장식 원 */}
+        {/* 네이버페이 쿠폰 카드 */}
+          <div className="flex items-center justify-center mb-6">
             <div
-              className="absolute -top-4 right-12 w-24 h-24 rounded-full"
-              style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-            />
-            <div
-              className="absolute bottom-2 right-16 w-16 h-16 rounded-full"
-              style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
-            />
-
-            {/* 메인 컨텐츠 */}
-            <div className="p-4 pr-14">
-              <div className="bg-white rounded-xl p-5">
-                {/* % 뱃지 + 페이백 라벨 */}
-                <div className="flex items-center gap-2 mb-1">
-                  <span
-                    className="px-2 py-0.5 rounded-full text-xs font-bold text-white"
-                    style={{ backgroundColor: "#ff6600" }}
-                  >
-                    {challenge.paybackRate}%
-                  </span>
-                  <span className="text-sm text-gray-500">페이백</span>
-                </div>
-
-                {/* 금액 */}
-                <div className="flex items-baseline">
-                  <span className="text-4xl font-bold text-gray-900">
-                    {challenge.paybackAmount.toLocaleString()}
-                  </span>
-                  <span className="text-xl font-bold text-gray-900 ml-1">원</span>
+              className="relative overflow-hidden"
+              style={{
+                width: "100%",
+                maxWidth: "340px",
+                height: "200px",
+                borderRadius: "24px",
+                background: "linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 50%, #0f0f0f 100%)",
+              }}
+            >
+              {/* 상단 - 콴다 페이백 */}
+              <div className="absolute top-4 left-0 right-0 flex justify-center">
+                <div
+                  className="flex items-center gap-2"
+                  style={{
+                    backgroundColor: "#ffdfb8",
+                    borderRadius: "24px",
+                    padding: "6px 14px",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    color: "#cc4400",
+                  }}
+                >
+                  <img
+                    src="/logo-qanda.png"
+                    alt="콴다"
+                    style={{ height: "18px" }}
+                  />
+                  <span>콴다에서 드리는 페이백</span>
                 </div>
               </div>
-            </div>
 
-            {/* 우측 PAYBACK 탭 */}
-            <div
-              className="absolute right-0 top-0 bottom-0 w-10 flex items-center justify-center"
-              style={{ backgroundColor: "rgba(255,255,255,0.2)" }}
-            >
-              <span
-                className="text-white text-[10px] font-bold"
-                style={{ writingMode: "vertical-rl", letterSpacing: "0.1em" }}
+              {/* 네이버페이 로고 (중앙) */}
+              <div
+                className="absolute inset-0 flex items-center justify-center"
+                style={{ marginTop: "-8px" }}
               >
-                PAYBACK
-              </span>
+                <img
+                  src="/logo_naverpay.svg"
+                  alt="네이버페이"
+                  style={{ height: "48px" }}
+                />
+              </div>
+
+              {/* 하단 영역 */}
+              <div className="absolute bottom-0 left-0 right-0 px-5 pb-4 flex justify-between items-end">
+                {/* 좌하단 텍스트 */}
+                <div className="flex flex-col">
+                  <span style={{ color: "#6b6b6b", fontSize: "16px", fontWeight: "600" }}>
+                    네이버페이
+                  </span>
+                  <span style={{ color: "#6b6b6b", fontSize: "16px", fontWeight: "600" }}>
+                    포인트 쿠폰
+                  </span>
+                </div>
+
+                {/* 우하단 금액 */}
+                <span className="text-white font-bold" style={{ fontSize: "32px" }}>
+                  {challenge.paybackAmount.toLocaleString()}원
+                </span>
+              </div>
             </div>
           </div>
+      </section>
 
-          {/* 페이백 받는 방법 */}
+      {/* 페이백 받는 방법 - 참여 전에만 표시 */}
+      {!hasParticipated && (
+        <section className="bg-white px-4 pb-6">
           <h3 className="text-base font-semibold text-gray-900 mb-4">페이백은 어떻게 받나요?</h3>
 
           <div className="space-y-4">
@@ -422,6 +545,18 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
         </section>
       )}
 
+      {/* 맨 위로 버튼 */}
+      {showScrollTop && (
+        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-30 pointer-events-none">
+          <button
+            onClick={scrollToTop}
+            className="absolute right-4 bottom-0 w-12 h-12 bg-white rounded-full shadow-lg border border-gray-200 flex items-center justify-center transition-all hover:shadow-xl active:scale-95 pointer-events-auto"
+          >
+            <ChevronUp className="w-6 h-6 text-gray-600" />
+          </button>
+        </div>
+      )}
+
       {/* 하단 고정 CTA */}
       <footer className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-gray-200 px-4 py-3 z-20">
         <div className="flex items-center gap-2 mb-3">
@@ -438,7 +573,8 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
           <Link
             href={challenge.productLink || "#"}
             target="_blank"
-            className="flex-1 py-3.5 border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors text-center"
+            className="flex-1 py-3.5 rounded-xl text-sm font-semibold text-white transition-colors text-center"
+            style={{ backgroundColor: "#3b82f6" }}
           >
             제품 바로가기
           </Link>
@@ -446,8 +582,16 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
           {hasParticipated ? (
             <button
               className="flex-1 py-3.5 rounded-xl text-sm font-semibold text-white transition-colors"
-              style={{ backgroundColor: "#22c55e" }}
-              disabled
+              style={{ backgroundColor: "#9ca3af" }}
+              onClick={() => {
+                if (!isTester) return;
+                const newCount = resetClickCount + 1;
+                setResetClickCount(newCount);
+                if (newCount >= 5) {
+                  setResetClickCount(0);
+                  handleResetParticipation();
+                }
+              }}
             >
               참가 완료
             </button>
@@ -463,11 +607,46 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
         </div>
       </footer>
 
-      <ParticipateModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        productLink={challenge.productLink}
-      />
+      {/* 신청 완료 팝업 */}
+      {showSuccessToast && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl mx-6 p-6 max-w-[320px] w-full text-center shadow-xl">
+            {/* 체크 아이콘 */}
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+              style={{ backgroundColor: "#e8f5e9" }}
+            >
+              <Check className="w-8 h-8" style={{ color: "#22c55e" }} />
+            </div>
+
+            {/* 메시지 */}
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              신청이 완료되었어요
+            </h3>
+            <p className="text-gray-600 mb-4">
+              기한 내에 구매를 마치고 인증해주세요.
+            </p>
+
+            {/* 카카오 선물하기 안내 */}
+            {challenge.platform === "카카오 선물하기" && (
+              <div className="px-3 py-2.5 rounded-lg mb-4 bg-gray-100">
+                <p className="text-sm font-bold text-gray-700 text-center">
+                  &apos;나에게 선물&apos;로만 참여 가능!
+                </p>
+              </div>
+            )}
+
+            {/* 확인 버튼 */}
+            <button
+              onClick={() => setShowSuccessToast(false)}
+              className="w-full py-3.5 rounded-xl text-white font-semibold"
+              style={{ backgroundColor: "#ff6600" }}
+            >
+              확인
+            </button>
+          </div>
+        </div>
+      )}
 
       <VerifyUploadModal
         isOpen={isUploadModalOpen}
@@ -482,6 +661,12 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
         stepDescription={currentVerifyStep !== null ? missionSteps[currentVerifyStep]?.description : ""}
         exampleImages={currentVerifyStep !== null ? missionSteps[currentVerifyStep]?.exampleImages || [] : []}
         participationId={participationId || ""}
+      />
+
+      <PhoneVerificationModal
+        isOpen={isPhoneVerificationOpen}
+        onClose={() => setIsPhoneVerificationOpen(false)}
+        onVerified={handlePhoneVerified}
       />
     </>
   );

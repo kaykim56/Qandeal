@@ -51,8 +51,14 @@ export async function getChallengeById(id: string): Promise<ChallengeWithMission
   });
 
   const rows = challengeResponse.data.values || [];
+  console.log(`[getChallengeById] Looking for ID: ${id}, Total rows: ${rows.length}`);
+  console.log(`[getChallengeById] All IDs:`, rows.map(r => r[0]).slice(-5)); // 최근 5개만
+
   const row = rows.find((r) => r[0] === id);
-  if (!row) return null;
+  if (!row) {
+    console.log(`[getChallengeById] Challenge not found: ${id}`);
+    return null;
+  }
 
   // 미션 데이터 가져오기
   const missionsResponse = await sheets.spreadsheets.values.get({
@@ -103,12 +109,23 @@ export async function createChallenge(input: ChallengeInput, createdBy?: string)
     reviewDeadline, // 리뷰 인증 기한 (하위 호환용)
   ];
 
-  await sheets.spreadsheets.values.append({
+  console.log(`[createChallenge] Creating challenge with ID: ${id}`);
+
+  // 마지막 행 번호 찾기
+  const existingData = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: "challenges!A:R",
+    range: "challenges!A:A",
+  });
+  const lastRow = (existingData.data.values?.length || 1) + 1;
+
+  // 정확한 위치에 데이터 삽입 (append 대신 update 사용)
+  const appendResult = await sheets.spreadsheets.values.update({
+    spreadsheetId: SHEET_ID,
+    range: `challenges!A${lastRow}:R${lastRow}`,
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [row] },
   });
+  console.log(`[createChallenge] Saved to row ${lastRow}:`, appendResult.data.updatedCells);
 
   // 미션 스텝 데이터 생성 (새 형식: stepsJson)
   const missionSteps = input.missionSteps || getDefaultSteps(purchaseDeadline, reviewDeadline, null, null);
@@ -118,9 +135,16 @@ export async function createChallenge(input: ChallengeInput, createdBy?: string)
     JSON.stringify(missionSteps), // stepsJson
   ];
 
-  await sheets.spreadsheets.values.append({
+  // missions 시트도 정확한 위치에 삽입
+  const existingMissions = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: "missions!A:C",
+    range: "missions!A:A",
+  });
+  const lastMissionRow = (existingMissions.data.values?.length || 1) + 1;
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SHEET_ID,
+    range: `missions!A${lastMissionRow}:C${lastMissionRow}`,
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [missionRow] },
   });
@@ -303,6 +327,7 @@ export interface Participation {
   reviewedAt?: string;
   reviewedBy?: string;
   testerEmail?: string; // 어드민 테스트 참여 시 이메일 저장
+  phoneNumber?: string; // 전화번호 (페이백용)
 }
 
 // 참여 생성 (참가하기 버튼 클릭 시)
@@ -310,6 +335,7 @@ export async function createParticipation(data: {
   challengeId: string;
   userId: string;
   testerEmail?: string; // 어드민 테스트 시 이메일
+  phoneNumber?: string; // 전화번호 (페이백용)
 }): Promise<string> {
   const sheets = getSheets();
   const id = crypto.randomUUID();
@@ -326,11 +352,12 @@ export async function createParticipation(data: {
     "", // reviewedAt
     "", // reviewedBy
     data.testerEmail || "", // testerEmail (J열)
+    data.phoneNumber || "", // phoneNumber (K열)
   ];
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: SHEET_ID,
-    range: "participations!A:J",
+    range: "participations!A:K",
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [row] },
   });
@@ -346,7 +373,7 @@ export async function getParticipation(
   const sheets = getSheets();
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: "participations!A2:J",
+    range: "participations!A2:K",
   });
 
   const rows = response.data.values || [];
@@ -369,7 +396,7 @@ export async function updateParticipationImage(
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: "participations!A2:J",
+    range: "participations!A2:K",
   });
 
   const rows = response.data.values || [];
@@ -413,7 +440,7 @@ export async function getAllParticipations(): Promise<Participation[]> {
     const sheets = getSheets();
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: "participations!A2:J",
+      range: "participations!A2:K",
     });
 
     const rows = response.data.values || [];
@@ -437,7 +464,7 @@ export async function updateParticipationStatus(
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: "participations!A2:J",
+    range: "participations!A2:K",
   });
 
   const rows = response.data.values || [];
@@ -468,6 +495,68 @@ export async function updateParticipationStatus(
   return true;
 }
 
+// 참여 삭제 (테스터 초기화용)
+export async function deleteParticipation(
+  challengeId: string,
+  userId: string
+): Promise<boolean> {
+  const sheets = getSheets();
+
+  // 시트 ID 가져오기
+  const spreadsheet = await sheets.spreadsheets.get({
+    spreadsheetId: SHEET_ID,
+  });
+
+  const participationsSheet = spreadsheet.data.sheets?.find(
+    (s) => s.properties?.title === "participations"
+  );
+
+  if (!participationsSheet?.properties?.sheetId) {
+    console.error("[deleteParticipation] participations sheet not found");
+    return false;
+  }
+
+  const sheetId = participationsSheet.properties.sheetId;
+
+  // 행 찾기
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID,
+    range: "participations!A2:K",
+  });
+
+  const rows = response.data.values || [];
+  const rowIndex = rows.findIndex((r) => r[1] === challengeId && r[2] === userId);
+
+  if (rowIndex === -1) {
+    console.error(`[deleteParticipation] Participation not found for challengeId: ${challengeId}, userId: ${userId}`);
+    return false;
+  }
+
+  // 행 삭제 (0-indexed, +1 for header row)
+  const deleteRowIndex = rowIndex + 1; // +1 because data starts at row 2
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SHEET_ID,
+    requestBody: {
+      requests: [
+        {
+          deleteDimension: {
+            range: {
+              sheetId: sheetId,
+              dimension: "ROWS",
+              startIndex: deleteRowIndex,
+              endIndex: deleteRowIndex + 1,
+            },
+          },
+        },
+      ],
+    },
+  });
+
+  console.log(`[deleteParticipation] Successfully deleted participation for challengeId: ${challengeId}, userId: ${userId}`);
+  return true;
+}
+
 function rowToParticipation(row: string[]): Participation {
   return {
     id: row[0] || "",
@@ -480,6 +569,7 @@ function rowToParticipation(row: string[]): Participation {
     reviewedAt: row[7] || undefined,
     reviewedBy: row[8] || undefined,
     testerEmail: row[9] || undefined,
+    phoneNumber: row[10] || undefined,
   };
 }
 
