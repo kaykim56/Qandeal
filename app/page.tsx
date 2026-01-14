@@ -2,6 +2,9 @@ import Link from "next/link";
 import { getAllChallenges } from "@/lib/google-sheets";
 import { Challenge } from "@/lib/types";
 
+// 페이지를 항상 동적으로 렌더링 (캐시 비활성화)
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   let challenges: Challenge[] = [];
 
