@@ -59,7 +59,8 @@ export async function POST(request: Request) {
         text: `[콴다 득템 딜] 인증번호: ${code}\n5분 내에 입력해주세요.`,
       });
     } catch (solapiError: unknown) {
-      console.error("Solapi 발송 오류:", solapiError);
+      const errorMessage = solapiError instanceof Error ? solapiError.message : JSON.stringify(solapiError);
+      console.error("Solapi 발송 오류:", errorMessage, solapiError);
 
       // 개발 환경에서는 콘솔에 코드 출력 (Solapi 설정 전 테스트용)
       if (process.env.NODE_ENV === "development") {
@@ -73,7 +74,7 @@ export async function POST(request: Request) {
       }
 
       return NextResponse.json(
-        { error: "SMS 발송에 실패했습니다. 잠시 후 다시 시도해주세요." },
+        { error: `SMS 발송에 실패했습니다: ${errorMessage}` },
         { status: 500 }
       );
     }
