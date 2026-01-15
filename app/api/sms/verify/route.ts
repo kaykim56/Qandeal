@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { verifyCode, validatePhoneNumber, formatPhoneNumber } from "@/lib/verification-codes";
 import * as crypto from "crypto";
 
+// Node.js 런타임 사용
+export const runtime = "nodejs";
+
 // 테스트용 전화번호 (고정 코드 000000)
 const TEST_PHONE_NUMBERS = [
   "01000000000",

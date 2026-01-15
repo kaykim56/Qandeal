@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import * as crypto from "crypto";
 import { generateCode, saveCode, validatePhoneNumber, formatPhoneNumber } from "@/lib/verification-codes";
 
+// Node.js 런타임 사용 (Edge에서 crypto 모듈 문제 방지)
+export const runtime = "nodejs";
+
 // 테스트용 전화번호 (SMS 발송 없이 고정 코드 000000 사용)
 const TEST_PHONE_NUMBERS = [
   "01000000000",
