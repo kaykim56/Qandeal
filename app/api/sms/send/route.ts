@@ -67,22 +67,25 @@ export async function POST(request: Request) {
     console.log("[SMS] Sending from:", senderNumber, "to:", normalizedPhone);
 
     try {
-      const response = await fetch("https://api.solapi.com/messages/v4/send", {
+      const response = await fetch("https://api.solapi.com/messages/v4/send-many", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": generateSolapiAuth(),
         },
         body: JSON.stringify({
-          message: {
-            to: normalizedPhone,
-            from: senderNumber,
-            text: `[콴다 득템 딜] 인증번호: ${code} 5분 내에 입력해주세요.`,
-          },
+          messages: [
+            {
+              to: normalizedPhone,
+              from: senderNumber,
+              text: `[콴다 득템 딜] 인증번호: ${code} 5분 내에 입력해주세요.`,
+            },
+          ],
         }),
       });
 
       const result = await response.json();
+      console.log("[SMS] API Response:", JSON.stringify(result));
 
       if (!response.ok) {
         throw new Error(result.errorMessage || JSON.stringify(result));
