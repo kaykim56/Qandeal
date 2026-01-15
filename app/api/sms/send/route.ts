@@ -53,7 +53,7 @@ export async function POST(request: Request) {
 
     // SMS 발송
     try {
-      await messageService.send({
+      await messageService.sendOne({
         to: normalizedPhone,
         from: process.env.SOLAPI_SENDER_NUMBER || "",
         text: `[콴다 득템 딜] 인증번호: ${code}\n5분 내에 입력해주세요.`,
