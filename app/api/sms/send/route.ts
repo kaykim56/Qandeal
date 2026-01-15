@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { SolapiMessageService } from "solapi";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const coolsms = require("coolsms-node-sdk").default;
 import { generateCode, saveCode, validatePhoneNumber, formatPhoneNumber } from "@/lib/verification-codes";
 
-// Solapi 클라이언트 초기화
-const messageService = new SolapiMessageService(
+// Solapi/Coolsms 클라이언트 초기화
+const messageService = new coolsms(
   process.env.SOLAPI_API_KEY || "",
   process.env.SOLAPI_API_SECRET || ""
 );
@@ -56,7 +57,8 @@ export async function POST(request: Request) {
       await messageService.sendOne({
         to: normalizedPhone,
         from: process.env.SOLAPI_SENDER_NUMBER || "",
-        text: `[콴다 득템 딜] 인증번호: ${code}\n5분 내에 입력해주세요.`,
+        text: `[콴다 득템 딜] 인증번호: ${code} 5분 내에 입력해주세요.`,
+        type: "SMS",
       });
     } catch (solapiError: unknown) {
       const errorMessage = solapiError instanceof Error ? solapiError.message : JSON.stringify(solapiError);
