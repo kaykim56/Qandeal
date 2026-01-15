@@ -23,7 +23,7 @@ function generateSolapiAuth() {
     .update(date + salt)
     .digest("hex");
 
-  return `HMAC-SHA256 apiKey=${apiKey},date=${date},salt=${salt},signature=${signature}`;
+  return `HMAC-SHA256 apiKey=${apiKey}, date=${date}, salt=${salt}, signature=${signature}`;
 }
 
 export async function POST(request: Request) {
