@@ -174,9 +174,9 @@ export default function VerifyUploadModal({
       <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
 
       {/* 모달 - 모바일에서는 하단 시트 스타일 */}
-      <div className="relative bg-white w-full sm:w-[400px] sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-hidden">
+      <div className="relative bg-white w-full sm:w-[400px] sm:rounded-2xl rounded-t-2xl max-h-[90vh] flex flex-col">
         {/* 헤더 */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 flex-shrink-0">
           <h2 className="text-lg font-bold text-gray-900">{displayTitle}</h2>
           <button
             onClick={handleClose}
@@ -186,8 +186,8 @@ export default function VerifyUploadModal({
           </button>
         </div>
 
-        {/* 컨텐츠 */}
-        <div className="p-4">
+        {/* 컨텐츠 - 스크롤 가능 */}
+        <div className="p-4 overflow-y-auto flex-1">
           {/* 안내 문구 */}
           <p className="text-sm text-gray-600 mb-4">{displayDescription}</p>
 
