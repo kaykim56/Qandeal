@@ -63,6 +63,9 @@ export async function POST(request: Request) {
     saveCode(phoneNumber, code);
 
     // SMS 발송 (Solapi REST API 직접 호출)
+    const senderNumber = (process.env.SOLAPI_SENDER_NUMBER || "").trim().replace(/-/g, "");
+    console.log("[SMS] Sending from:", senderNumber, "to:", normalizedPhone);
+
     try {
       const response = await fetch("https://api.solapi.com/messages/v4/send", {
         method: "POST",
@@ -73,7 +76,7 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           message: {
             to: normalizedPhone,
-            from: process.env.SOLAPI_SENDER_NUMBER || "",
+            from: senderNumber,
             text: `[콴다 득템 딜] 인증번호: ${code} 5분 내에 입력해주세요.`,
           },
         }),
