@@ -11,8 +11,8 @@ const TEST_PHONE_NUMBERS = [
 
 // Solapi API 직접 호출을 위한 인증 헤더 생성
 function generateSolapiAuth() {
-  const apiKey = process.env.SOLAPI_API_KEY || "";
-  const apiSecret = process.env.SOLAPI_API_SECRET || "";
+  const apiKey = (process.env.SOLAPI_API_KEY || "").trim();
+  const apiSecret = (process.env.SOLAPI_API_SECRET || "").trim();
   const date = new Date().toISOString();
   const salt = crypto.randomBytes(16).toString("hex");
   const signature = crypto
@@ -20,7 +20,7 @@ function generateSolapiAuth() {
     .update(date + salt)
     .digest("hex");
 
-  return `HMAC-SHA256 apiKey=${apiKey}, date=${date}, salt=${salt}, signature=${signature}`;
+  return `HMAC-SHA256 apiKey=${apiKey},date=${date},salt=${salt},signature=${signature}`;
 }
 
 export async function POST(request: Request) {
