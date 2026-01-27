@@ -52,12 +52,8 @@ export async function getChallengeById(id: string): Promise<ChallengeWithMission
   });
 
   const rows = challengeResponse.data.values || [];
-  console.log(`[getChallengeById] Looking for ID: ${id}, Total rows: ${rows.length}`);
-  console.log(`[getChallengeById] All IDs:`, rows.map(r => r[0]).slice(-5)); // 최근 5개만
-
   const row = rows.find((r) => r[0] === id);
   if (!row) {
-    console.log(`[getChallengeById] Challenge not found: ${id}`);
     return null;
   }
 
@@ -111,8 +107,6 @@ export async function createChallenge(input: ChallengeInput, createdBy?: string)
     reviewDeadline, // 리뷰 인증 기한 (하위 호환용)
   ];
 
-  console.log(`[createChallenge] Creating challenge with ID: ${id}`);
-
   // 마지막 행 번호 찾기
   const existingData = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
@@ -127,7 +121,6 @@ export async function createChallenge(input: ChallengeInput, createdBy?: string)
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [row] },
   });
-  console.log(`[createChallenge] Saved to row ${lastRow}:`, appendResult.data.updatedCells);
 
   // 미션 스텝 데이터 생성 (새 형식: stepsJson)
   const missionSteps = input.missionSteps || getDefaultSteps(purchaseDeadline, reviewDeadline, null, null);
@@ -395,21 +388,15 @@ export async function updateParticipationImage(
 ): Promise<boolean> {
   const sheets = getSheets();
 
-  console.log(`[updateParticipationImage] participationId: ${participationId}, stepType: ${stepType}, stepOrder: ${stepOrder}`);
-
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
     range: "participations!A2:K",
   });
 
   const rows = response.data.values || [];
-  console.log(`[updateParticipationImage] Found ${rows.length} rows in sheet`);
-
   const rowIndex = rows.findIndex((r) => r[0] === participationId);
-  console.log(`[updateParticipationImage] Row index for participationId: ${rowIndex}`);
 
   if (rowIndex === -1) {
-    console.error(`[updateParticipationImage] participationId not found: ${participationId}`);
     return false;
   }
 
@@ -424,8 +411,6 @@ export async function updateParticipationImage(
   }
   const sheetRow = rowIndex + 2; // +2 because A2 starts at index 0
 
-  console.log(`[updateParticipationImage] Updating column ${column}, row ${sheetRow}`);
-
   await sheets.spreadsheets.values.update({
     spreadsheetId: SHEET_ID,
     range: `participations!${column}${sheetRow}`,
@@ -433,7 +418,6 @@ export async function updateParticipationImage(
     requestBody: { values: [[imageUrl]] },
   });
 
-  console.log(`[updateParticipationImage] Successfully updated step ${stepOrder ?? stepType} image`);
   return true;
 }
 
@@ -448,9 +432,8 @@ export async function getAllParticipations(): Promise<Participation[]> {
 
     const rows = response.data.values || [];
     return rows.map(rowToParticipation);
-  } catch (error) {
+  } catch {
     // 시트가 없는 경우 빈 배열 반환
-    console.error("getAllParticipations error:", error);
     return [];
   }
 }
@@ -463,8 +446,6 @@ export async function updateParticipationStatus(
 ): Promise<boolean> {
   const sheets = getSheets();
 
-  console.log(`[updateParticipationStatus] id: ${id}, status: ${status}`);
-
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
     range: "participations!A2:K",
@@ -473,10 +454,7 @@ export async function updateParticipationStatus(
   const rows = response.data.values || [];
   const rowIndex = rows.findIndex((r) => r[0] === id);
 
-  console.log(`[updateParticipationStatus] Row index: ${rowIndex}`);
-
   if (rowIndex === -1) {
-    console.error(`[updateParticipationStatus] Participation not found: ${id}`);
     return false;
   }
 
@@ -494,7 +472,6 @@ export async function updateParticipationStatus(
     requestBody: { values: [[status, existingCreatedAt, now, reviewedBy]] },
   });
 
-  console.log(`[updateParticipationStatus] Successfully updated status to ${status}`);
   return true;
 }
 
@@ -515,7 +492,6 @@ export async function deleteParticipation(
   );
 
   if (!participationsSheet?.properties?.sheetId) {
-    console.error("[deleteParticipation] participations sheet not found");
     return false;
   }
 
@@ -531,7 +507,6 @@ export async function deleteParticipation(
   const rowIndex = rows.findIndex((r) => r[1] === challengeId && r[2] === userId);
 
   if (rowIndex === -1) {
-    console.error(`[deleteParticipation] Participation not found for challengeId: ${challengeId}, userId: ${userId}`);
     return false;
   }
 
@@ -556,7 +531,6 @@ export async function deleteParticipation(
     },
   });
 
-  console.log(`[deleteParticipation] Successfully deleted participation for challengeId: ${challengeId}, userId: ${userId}`);
   return true;
 }
 

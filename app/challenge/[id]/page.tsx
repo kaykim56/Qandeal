@@ -4,11 +4,12 @@
 // 캐싱 비활성화 - 항상 최신 데이터 가져오기
 export const dynamic = "force-dynamic";
 
-import { ChevronLeft, Share2 } from "lucide-react";
 import { getChallengeById } from "@/lib/google-sheets";
 import { notFound } from "next/navigation";
 import ChallengeContent from "@/components/ChallengeContent";
-import Link from "next/link";
+import ShareButton from "@/components/ShareButton";
+import BackButton from "@/components/BackButton";
+import type { Metadata } from "next";
 
 // QANDA 브랜드 색상
 // 메인 오렌지: #ff6600
@@ -17,6 +18,26 @@ import Link from "next/link";
 
 interface PageProps {
   params: Promise<{ id: string }>;
+}
+
+// 동적 OG 태그 생성
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  const challenge = await getChallengeById(id);
+
+  if (!challenge) {
+    return { title: "챌린지를 찾을 수 없습니다" };
+  }
+
+  return {
+    title: challenge.title,
+    description: `${challenge.paybackRate}% 페이백 | 실구매가 ${challenge.finalPrice.toLocaleString()}원`,
+    openGraph: {
+      title: challenge.title,
+      description: `${challenge.paybackRate}% 페이백 | 실구매가 ${challenge.finalPrice.toLocaleString()}원`,
+      images: challenge.productImage ? [challenge.productImage] : [],
+    },
+  };
 }
 
 export default async function ChallengeDetailPage({ params }: PageProps) {
@@ -63,12 +84,8 @@ export default async function ChallengeDetailPage({ params }: PageProps) {
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* 상단 헤더 */}
       <header className="sticky top-0 z-10 bg-white px-4 py-3 flex items-center justify-between border-b border-gray-100">
-        <Link href="/" className="p-2 -ml-2 hover:bg-gray-100 rounded-full">
-          <ChevronLeft className="w-6 h-6 text-gray-700" />
-        </Link>
-        <button className="p-2 hover:bg-gray-100 rounded-full">
-          <Share2 className="w-5 h-5 text-gray-700" />
-        </button>
+        <BackButton />
+        <ShareButton title={challenge.title} />
       </header>
 
       {/* 제품 이미지 */}
