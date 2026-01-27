@@ -3,7 +3,7 @@
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Plus, Edit, Trash2, ExternalLink, LogOut, Loader2, RefreshCw, ClipboardCheck, X, ChevronDown, ChevronUp, Database } from "lucide-react";
+import { Plus, Edit, Trash2, ExternalLink, LogOut, Loader2, RefreshCw, ClipboardCheck, X, ChevronDown, ChevronUp, Database, Copy, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { Challenge } from "@/lib/types";
 
@@ -128,6 +128,59 @@ export default function AdminDashboard() {
   const handleTabChange = (tab: "draft" | "published") => {
     setActiveTab(tab);
     setSelectedIds(new Set());
+  };
+
+  // 챌린지 복제
+  const handleClone = async (id: string) => {
+    if (!confirm("이 챌린지를 복제하시겠습니까?")) return;
+
+    try {
+      const res = await fetch("/api/admin/challenges/clone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challengeId: id }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert(`복제 완료! 새 ID: ${data.newId}`);
+        fetchChallenges(); // 목록 새로고침
+      } else {
+        alert("복제 실패: " + (data.error || "알 수 없는 오류"));
+      }
+    } catch (error) {
+      console.error("Clone failed:", error);
+      alert("복제에 실패했습니다");
+    }
+  };
+
+  // 게시 상태 토글 (published <-> draft)
+  const handleToggleStatus = async (id: string, currentStatus: string) => {
+    const newStatus = currentStatus === "published" ? "draft" : "published";
+    const message = newStatus === "draft" ? "게시를 내리시겠습니까?" : "게시하시겠습니까?";
+
+    if (!confirm(message)) return;
+
+    try {
+      const res = await fetch(`/api/challenges/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (res.ok) {
+        setChallenges(challenges.map((c) =>
+          c.id === id ? { ...c, status: newStatus as "draft" | "published" } : c
+        ));
+        alert(newStatus === "draft" ? "게시가 내려졌습니다" : "게시되었습니다");
+      } else {
+        alert("상태 변경에 실패했습니다");
+      }
+    } catch (error) {
+      console.error("Toggle status failed:", error);
+      alert("상태 변경에 실패했습니다");
+    }
   };
 
   // 가격 체크 실행
@@ -568,6 +621,20 @@ export default function AdminDashboard() {
                           >
                             <Edit className="w-4 h-4" />
                           </Link>
+                          <button
+                            onClick={() => handleClone(challenge.id)}
+                            className="p-2 text-gray-400 hover:text-purple-600"
+                            title="복제"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleToggleStatus(challenge.id, challenge.status)}
+                            className={`p-2 text-gray-400 ${challenge.status === "published" ? "hover:text-orange-600" : "hover:text-green-600"}`}
+                            title={challenge.status === "published" ? "게시 내리기" : "게시하기"}
+                          >
+                            {challenge.status === "published" ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
                           <button
                             onClick={() => handleDelete(challenge.id)}
                             className="p-2 text-gray-400 hover:text-red-600"

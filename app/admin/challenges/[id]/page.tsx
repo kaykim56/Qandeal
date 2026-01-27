@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Save, X, ExternalLink, Loader2, LinkIcon, ImageIcon, GripVertical, ZoomIn, Eye, EyeOff, Plus, Trash2, ChevronUp, ChevronDown, Upload } from "lucide-react";
+import { ArrowLeft, Save, X, ExternalLink, Loader2, LinkIcon, ImageIcon, GripVertical, ZoomIn, Eye, EyeOff, Plus, Trash2, ChevronUp, ChevronDown, Upload, Copy } from "lucide-react";
 import Link from "next/link";
 import { ChallengeWithMissions, MissionStep } from "@/lib/types";
 import ChallengePreview from "@/components/ChallengePreview";
@@ -17,6 +17,7 @@ export default function EditChallengePage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [cloning, setCloning] = useState(false);
   const [fetchingImage, setFetchingImage] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
 
@@ -412,6 +413,36 @@ export default function EditChallengePage() {
       alert("저장에 실패했습니다");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleClone = async () => {
+    if (!confirm("이 챌린지를 복제하시겠습니까?\n새로운 ID로 복제본이 생성됩니다.")) {
+      return;
+    }
+
+    setCloning(true);
+    try {
+      const res = await fetch("/api/admin/challenges/clone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challengeId: id }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert(`복제 완료!\n새 URL: /challenge/${data.newId}`);
+        // 복제된 챌린지 편집 페이지로 이동
+        router.push(`/admin/challenges/${data.newId}`);
+      } else {
+        alert("복제에 실패했습니다: " + (data.error || "알 수 없는 오류"));
+      }
+    } catch (error) {
+      console.error("Clone failed:", error);
+      alert("복제에 실패했습니다");
+    } finally {
+      setCloning(false);
     }
   };
 
@@ -1093,6 +1124,15 @@ export default function EditChallengePage() {
 
           {/* 저장 버튼 */}
           <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={handleClone}
+              disabled={cloning || saving}
+              className="px-3 py-2 border border-purple-300 text-purple-600 rounded-lg hover:bg-purple-50 transition-colors disabled:opacity-50 text-sm whitespace-nowrap flex items-center gap-1"
+            >
+              <Copy className="w-4 h-4" />
+              {cloning ? "복제 중..." : "복제"}
+            </button>
             <button
               type="button"
               onClick={() => handleSave("draft")}

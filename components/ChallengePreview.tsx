@@ -1,7 +1,40 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { ChevronLeft, Share2, Info, Clock } from "lucide-react";
 import { MissionStep } from "@/lib/types";
+
+// 번호 목록을 파싱하여 렌더링하는 컴포넌트
+function FormattedDescription({ text, className }: { text: string; className?: string }) {
+  const lines = text.split("\n");
+  const numberedPattern = /^(\d+)\.\s+(.+)$/;
+
+  // 모든 줄이 번호로 시작하는지 확인
+  const allNumbered = lines.every(line => line.trim() === "" || numberedPattern.test(line.trim()));
+
+  if (allNumbered && lines.some(line => numberedPattern.test(line.trim()))) {
+    const items = lines
+      .filter(line => numberedPattern.test(line.trim()))
+      .map(line => {
+        const match = line.trim().match(numberedPattern);
+        return match ? match[2] : line;
+      });
+
+    return (
+      <div className={`space-y-0.5 ${className || ""}`}>
+        {items.map((item, idx) => (
+          <div key={idx} className="flex">
+            <span className="flex-shrink-0 w-5">{idx + 1}.</span>
+            <span className="flex-1">{item}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // 번호 목록이 아니면 기존처럼 줄바꿈만 적용
+  return <p className={`whitespace-pre-line ${className || ""}`}>{text}</p>;
+}
 
 interface ChallengePreviewProps {
   data: {
@@ -21,6 +54,24 @@ interface ChallengePreviewProps {
 }
 
 export default function ChallengePreview({ data }: ChallengePreviewProps) {
+  const [showPaybackTooltip, setShowPaybackTooltip] = useState(false);
+  const [showFinalPriceTooltip, setShowFinalPriceTooltip] = useState(false);
+
+  // 툴팁 자동 닫기 (5초)
+  useEffect(() => {
+    if (showPaybackTooltip) {
+      const timer = setTimeout(() => setShowPaybackTooltip(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showPaybackTooltip]);
+
+  useEffect(() => {
+    if (showFinalPriceTooltip) {
+      const timer = setTimeout(() => setShowFinalPriceTooltip(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showFinalPriceTooltip]);
+
   // 동적 스텝 또는 기본 스텝
   const missionSteps: MissionStep[] = data.missionSteps && data.missionSteps.length > 0
     ? data.missionSteps
@@ -55,9 +106,9 @@ export default function ChallengePreview({ data }: ChallengePreviewProps) {
       const minutes = date.getMinutes();
 
       if (hours === 23 && minutes === 59) {
-        return `${month}/${day} 자정까지`;
+        return `${month}/${day} 자정`;
       }
-      return `${month}/${day} ${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}까지`;
+      return `${month}/${day} ${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
     } catch {
       return "미정";
     }
@@ -96,8 +147,25 @@ export default function ChallengePreview({ data }: ChallengePreviewProps) {
         <section className="bg-white px-4 py-5 border-b border-gray-100">
           {/* 플랫폼 태그 */}
           <span
-            className="inline-block px-2.5 py-1 text-xs font-medium rounded mb-3"
-            style={{ backgroundColor: "#fff4e5", color: "#cc4400" }}
+            className={`inline-block px-2.5 py-1 text-xs font-medium rounded mb-3 ${
+              data.platform?.includes("스마트스토어")
+                ? "bg-[#03C75A] text-white"
+                : data.platform?.includes("쿠팡")
+                ? "bg-blue-500 text-white"
+                : data.platform?.includes("카카오")
+                ? "bg-yellow-400 text-yellow-900"
+                : data.platform?.includes("올리브영")
+                ? "bg-green-600 text-white"
+                : ""
+            }`}
+            style={
+              !data.platform?.includes("스마트스토어") &&
+              !data.platform?.includes("쿠팡") &&
+              !data.platform?.includes("카카오") &&
+              !data.platform?.includes("올리브영")
+                ? { backgroundColor: "#fff4e5", color: "#cc4400" }
+                : undefined
+            }
           >
             {data.platform || "플랫폼"}
           </span>
@@ -107,7 +175,12 @@ export default function ChallengePreview({ data }: ChallengePreviewProps) {
           </h1>
 
           <p className="text-sm text-gray-500 mb-4 whitespace-pre-wrap">
-            옵션 지정 | {data.option || "옵션 정보"}
+            {data.option ? (
+              <>
+                <span className="inline-block px-1.5 py-0.5 bg-gray-200 text-gray-700 text-xs font-semibold rounded mr-1.5">옵션 지정</span>
+                {data.option}
+              </>
+            ) : "모든 옵션이 페이백 대상입니다"}
           </p>
 
           {/* 가격 정보 테이블 */}
@@ -132,7 +205,23 @@ export default function ChallengePreview({ data }: ChallengePreviewProps) {
             <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
               <span className="text-sm text-gray-600 flex items-center gap-1">
                 페이백
-                <Info className="w-3.5 h-3.5 text-gray-400" />
+                <span className="relative">
+                  <button
+                    onClick={() => {
+                      setShowFinalPriceTooltip(false);
+                      setShowPaybackTooltip(!showPaybackTooltip);
+                    }}
+                    className="focus:outline-none"
+                  >
+                    <Info className="w-3.5 h-3.5 text-gray-400" />
+                  </button>
+                  {showPaybackTooltip && (
+                    <div className="absolute left-0 bottom-full z-10 mb-2 whitespace-nowrap px-4 py-2.5 bg-gray-800 text-white text-xs rounded-lg shadow-lg text-center">
+                      <div className="absolute -bottom-[6px] left-3 w-3 h-3 bg-gray-800 rotate-45" />
+                      <span className="relative z-10">모든 인증 완료 시 환급드리는 금액입니다.</span>
+                    </div>
+                  )}
+                </span>
               </span>
               <span className="text-sm">
                 <span style={{ color: "#ff6600" }} className="font-semibold mr-1">
@@ -150,7 +239,23 @@ export default function ChallengePreview({ data }: ChallengePreviewProps) {
             >
               <span className="text-sm flex items-center gap-1" style={{ color: "#cc4400" }}>
                 실구매가
-                <Info className="w-3.5 h-3.5" style={{ color: "#cc4400" }} />
+                <span className="relative">
+                  <button
+                    onClick={() => {
+                      setShowPaybackTooltip(false);
+                      setShowFinalPriceTooltip(!showFinalPriceTooltip);
+                    }}
+                    className="focus:outline-none"
+                  >
+                    <Info className="w-3.5 h-3.5" style={{ color: "#cc4400" }} />
+                  </button>
+                  {showFinalPriceTooltip && (
+                    <div className="absolute left-full top-1/2 -translate-y-1/2 z-10 ml-2 whitespace-nowrap px-4 py-2.5 bg-gray-800 text-white text-xs rounded-lg shadow-lg">
+                      <div className="absolute -left-[6px] top-1/2 -translate-y-1/2 w-3 h-3 bg-gray-800 rotate-45" />
+                      <span className="relative z-10">환급 후 구매자의 실제 지출 금액입니다.</span>
+                    </div>
+                  )}
+                </span>
               </span>
               <span className="text-base font-bold text-gray-900">
                 {(data.finalPrice || 0).toLocaleString()}원
@@ -188,7 +293,24 @@ export default function ChallengePreview({ data }: ChallengePreviewProps) {
                   <span className="text-base font-semibold text-gray-900">{step.title}</span>
                 </div>
                 <div className="pl-9 text-sm text-gray-500">
-                  <p>{step.description}</p>
+                  {step.title.includes("리뷰") && (
+                    <div className="mb-3 p-3 bg-orange-50 border-2 border-orange-300 rounded-lg">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className="text-sm font-bold text-orange-600">⚠️ 공정위 문구 작성 필수</p>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText("구매지원금을 받아 직접 구매 후 솔직한/주관적인 생각으로 작성하였습니다.");
+                            alert("복사되었습니다!");
+                          }}
+                          className="px-2.5 py-1 bg-orange-500 text-white text-xs font-semibold rounded hover:bg-orange-600 transition-colors"
+                        >
+                          복사
+                        </button>
+                      </div>
+                      <p className="text-sm font-medium text-orange-700 bg-white px-2 py-1.5 rounded border border-orange-200">[구매지원금을 받아 직접 구매 후 솔직한/주관적인 생각으로 작성하였습니다.]</p>
+                    </div>
+                  )}
+                  <FormattedDescription text={step.description} />
                   {step.deadline && (
                     <p className="mt-1 text-xs text-gray-400">
                       기한: {formatDeadline(step.deadline)}

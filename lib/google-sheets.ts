@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import { nanoid } from "nanoid";
 import { Challenge, ChallengeInput, ChallengeWithMissions, Mission, MissionStep } from "./types";
 
 // Google Sheets 인증
@@ -81,12 +82,13 @@ export async function getChallengeById(id: string): Promise<ChallengeWithMission
 
 export async function createChallenge(input: ChallengeInput, createdBy?: string): Promise<string> {
   const sheets = getSheets();
-  const id = crypto.randomUUID();
+  const id = nanoid(8);
   const now = new Date().toISOString();
 
-  // missionSteps에서 첫 번째 스텝의 deadline을 purchaseDeadline으로 사용 (하위 호환)
+  // missionSteps에서 첫 번째 스텝의 deadline을 purchaseDeadline으로, 마지막 스텝을 reviewDeadline으로 사용 (하위 호환)
   const purchaseDeadline = input.missionSteps?.[0]?.deadline || input.purchaseDeadline || "";
-  const reviewDeadline = input.missionSteps?.[1]?.deadline || input.reviewDeadline || "";
+  const lastStepIndex = (input.missionSteps?.length || 0) - 1;
+  const reviewDeadline = lastStepIndex >= 0 ? input.missionSteps?.[lastStepIndex]?.deadline || "" : input.reviewDeadline || "";
 
   const row = [
     id,
@@ -130,7 +132,7 @@ export async function createChallenge(input: ChallengeInput, createdBy?: string)
   // 미션 스텝 데이터 생성 (새 형식: stepsJson)
   const missionSteps = input.missionSteps || getDefaultSteps(purchaseDeadline, reviewDeadline, null, null);
   const missionRow = [
-    crypto.randomUUID(),
+    nanoid(8),
     id,
     JSON.stringify(missionSteps), // stepsJson
   ];
@@ -168,9 +170,10 @@ export async function updateChallenge(id: string, input: Partial<ChallengeInput>
   const existing = rowToChallenge(rows[rowIndex]);
   const updated = { ...existing, ...input, updatedAt: new Date().toISOString() };
 
-  // missionSteps에서 deadline 추출 (하위 호환용)
+  // missionSteps에서 deadline 추출 (하위 호환용) - 마지막 스텝을 reviewDeadline으로
   const purchaseDeadline = updated.missionSteps?.[0]?.deadline || updated.purchaseDeadline || "";
-  const reviewDeadline = updated.missionSteps?.[1]?.deadline || updated.reviewDeadline || "";
+  const lastStepIdx = (updated.missionSteps?.length || 0) - 1;
+  const reviewDeadline = lastStepIdx >= 0 ? updated.missionSteps?.[lastStepIdx]?.deadline || "" : updated.reviewDeadline || "";
 
   const row = [
     updated.id,
@@ -256,7 +259,7 @@ export async function updateMissionImages(
       range: "missions!A:D",
       valueInputOption: "USER_ENTERED",
       requestBody: {
-        values: [[crypto.randomUUID(), challengeId, purchaseImage, reviewImage]],
+        values: [[nanoid(8), challengeId, purchaseImage, reviewImage]],
       },
     });
   } else {
@@ -296,7 +299,7 @@ export async function updateMissionSteps(
       range: "missions!A:C",
       valueInputOption: "USER_ENTERED",
       requestBody: {
-        values: [[crypto.randomUUID(), challengeId, stepsJson]],
+        values: [[nanoid(8), challengeId, stepsJson]],
       },
     });
   } else {
@@ -338,7 +341,7 @@ export async function createParticipation(data: {
   phoneNumber?: string; // 전화번호 (페이백용)
 }): Promise<string> {
   const sheets = getSheets();
-  const id = crypto.randomUUID();
+  const id = nanoid(8);
   const now = new Date().toISOString();
 
   const row = [

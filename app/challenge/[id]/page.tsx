@@ -1,6 +1,9 @@
 // 챌린지 상세 페이지 - 챌린저스 스타일 + QANDA 브랜드 색상
 // Next.js App Router + Tailwind CSS
 
+// 캐싱 비활성화 - 항상 최신 데이터 가져오기
+export const dynamic = "force-dynamic";
+
 import { ChevronLeft, Share2 } from "lucide-react";
 import { getChallengeById } from "@/lib/google-sheets";
 import { notFound } from "next/navigation";

@@ -76,6 +76,8 @@ export default async function Home() {
                         ? "bg-blue-500 text-white"
                         : challenge.platform.includes("올리브영")
                         ? "bg-green-600 text-white"
+                        : challenge.platform.includes("스마트스토어")
+                        ? "bg-[#03C75A] text-white"
                         : "bg-gray-100 text-gray-500"
                     }`}>
                       {challenge.platform}
