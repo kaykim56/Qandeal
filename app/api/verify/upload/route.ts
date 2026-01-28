@@ -50,8 +50,23 @@ export async function POST(request: Request): Promise<NextResponse> {
       addRandomSuffix: false,
     });
 
-    // Supabase에서 참여 레코드 업데이트
-    await updateParticipationImage(participationId, stepType, blob.url, stepOrder);
+    console.log(`[verify/upload] Blob uploaded: ${blob.url}`);
+    console.log(`[verify/upload] participationId: ${participationId}, stepType: ${stepType}, stepOrder: ${stepOrder}`);
+
+    // Supabase에서 참여 이미지 저장
+    const dbSuccess = await updateParticipationImage(participationId, stepType, blob.url, stepOrder);
+
+    if (!dbSuccess) {
+      console.error(`[verify/upload] Failed to save image to DB for participation: ${participationId}`);
+      // DB 저장 실패해도 Blob URL은 반환 (UI에서는 보이지만 DB에는 없음)
+      // 이 경우 에러를 반환하도록 변경
+      return NextResponse.json(
+        { error: "이미지 업로드는 성공했으나 DB 저장에 실패했습니다" },
+        { status: 500 }
+      );
+    }
+
+    console.log(`[verify/upload] Successfully saved to DB`);
 
     return NextResponse.json({
       success: true,

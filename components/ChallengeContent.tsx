@@ -205,21 +205,38 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
           setHasParticipated(true);
           setParticipationStatus(p.status);
 
-          // 스텝 상태 복원
+          // 스텝 상태 복원 (동적 스텝 지원)
           const newSteps = [...steps];
-          if (p.purchaseImageUrl) {
-            newSteps[0] = { ...newSteps[0], status: "completed", imageUrl: p.purchaseImageUrl };
-          }
-          if (p.reviewImageUrl) {
-            newSteps[1] = { ...newSteps[1], status: "completed", imageUrl: p.reviewImageUrl };
+
+          // 새로운 images 배열이 있으면 사용, 없으면 기존 방식
+          if (p.images && p.images.length > 0) {
+            // 동적 스텝: stepOrder로 매칭
+            p.images.forEach((img: { stepOrder: number; imageUrl: string }) => {
+              const stepIndex = img.stepOrder - 1; // stepOrder는 1부터 시작
+              if (stepIndex >= 0 && stepIndex < newSteps.length) {
+                newSteps[stepIndex] = {
+                  ...newSteps[stepIndex],
+                  status: "completed",
+                  imageUrl: img.imageUrl,
+                };
+              }
+            });
+          } else {
+            // 하위 호환: purchaseImageUrl, reviewImageUrl
+            if (p.purchaseImageUrl) {
+              newSteps[0] = { ...newSteps[0], status: "completed", imageUrl: p.purchaseImageUrl };
+            }
+            if (p.reviewImageUrl) {
+              newSteps[1] = { ...newSteps[1], status: "completed", imageUrl: p.reviewImageUrl };
+            }
           }
           setSteps(newSteps);
 
           // 페이백 상태 결정
           if (p.status === "approved") {
-            // 승인됨 → 환급 중 (환급 완료는 나중에 별도 처리)
             setPaybackStatus("paying");
-          } else if (p.purchaseImageUrl && p.reviewImageUrl) {
+          } else if (newSteps.every((s) => s.status === "completed")) {
+            // 모든 스텝 완료 시 검토중
             setPaybackStatus("reviewing");
           }
         }

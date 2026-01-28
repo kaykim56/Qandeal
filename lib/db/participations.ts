@@ -16,6 +16,8 @@ export interface Participation {
   reviewedBy?: string;
   testerEmail?: string;
   phoneNumber?: string;
+  // 동적 스텝 지원: 모든 이미지 배열
+  images?: Array<{ stepOrder: number; imageUrl: string }>;
 }
 
 export interface ParticipationWithImages extends Participation {
@@ -44,9 +46,15 @@ function dbToParticipation(
   },
   images?: Array<{ step_order: number; image_url: string }>
 ): Participation {
-  // 이미지 데이터에서 purchaseImageUrl, reviewImageUrl 추출
+  // 이미지 데이터에서 purchaseImageUrl, reviewImageUrl 추출 (하위 호환)
   const purchaseImage = images?.find((i) => i.step_order === 1);
   const reviewImage = images?.find((i) => i.step_order === 2);
+
+  // 모든 이미지 배열 (동적 스텝 지원)
+  const allImages = images?.map((i) => ({
+    stepOrder: i.step_order,
+    imageUrl: i.image_url,
+  })) || [];
 
   return {
     id: row.id,
@@ -60,6 +68,7 @@ function dbToParticipation(
     reviewedBy: row.reviewed_by || undefined,
     testerEmail: row.tester_email || undefined,
     phoneNumber: row.phone_number || undefined,
+    images: allImages.length > 0 ? allImages : undefined,
   };
 }
 
