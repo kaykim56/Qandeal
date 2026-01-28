@@ -160,6 +160,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
       title: ms.title.replace(/ /g, "\n"), // 공백을 줄바꿈으로
       status: "pending" as const,
       imageUrl: undefined,
+      imageUrls: [],
       deadline: ms.deadline,
       description: ms.description,
       exampleImages: ms.exampleImages || [],
@@ -205,29 +206,41 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
           setHasParticipated(true);
           setParticipationStatus(p.status);
 
-          // 스텝 상태 복원 (동적 스텝 지원)
+          // 스텝 상태 복원 (동적 스텝 지원 + 여러 이미지)
           const newSteps = [...steps];
 
           // 새로운 images 배열이 있으면 사용, 없으면 기존 방식
           if (p.images && p.images.length > 0) {
-            // 동적 스텝: stepOrder로 매칭
-            p.images.forEach((img: { stepOrder: number; imageUrl: string }) => {
-              const stepIndex = img.stepOrder - 1; // stepOrder는 1부터 시작
+            // stepOrder별로 이미지 그룹화 (imageOrder로 정렬된 상태)
+            const imagesByStep: { [key: number]: string[] } = {};
+            p.images.forEach((img: { stepOrder: number; imageOrder: number; imageUrl: string }) => {
+              const stepIndex = img.stepOrder - 1;
+              if (!imagesByStep[stepIndex]) {
+                imagesByStep[stepIndex] = [];
+              }
+              // 이미지 순서대로 배열에 추가 (이미 DB에서 정렬되어 옴)
+              imagesByStep[stepIndex].push(img.imageUrl);
+            });
+
+            // 각 스텝에 이미지 배열 적용
+            Object.entries(imagesByStep).forEach(([stepIndexStr, urls]) => {
+              const stepIndex = parseInt(stepIndexStr, 10);
               if (stepIndex >= 0 && stepIndex < newSteps.length) {
                 newSteps[stepIndex] = {
                   ...newSteps[stepIndex],
                   status: "completed",
-                  imageUrl: img.imageUrl,
+                  imageUrl: urls[0], // 하위 호환
+                  imageUrls: urls,
                 };
               }
             });
           } else {
             // 하위 호환: purchaseImageUrl, reviewImageUrl
             if (p.purchaseImageUrl) {
-              newSteps[0] = { ...newSteps[0], status: "completed", imageUrl: p.purchaseImageUrl };
+              newSteps[0] = { ...newSteps[0], status: "completed", imageUrl: p.purchaseImageUrl, imageUrls: [p.purchaseImageUrl] };
             }
             if (p.reviewImageUrl) {
-              newSteps[1] = { ...newSteps[1], status: "completed", imageUrl: p.reviewImageUrl };
+              newSteps[1] = { ...newSteps[1], status: "completed", imageUrl: p.reviewImageUrl, imageUrls: [p.reviewImageUrl] };
             }
           }
           setSteps(newSteps);
@@ -302,13 +315,17 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
     setIsUploadModalOpen(true);
   };
 
-  const handleUploadSuccess = (uploadedImageUrl: string) => {
+  const handleUploadSuccess = (uploadedImageUrls: string[]) => {
     if (currentVerifyStep === null) return;
 
     // 스텝 완료 처리 + 이미지 URL 저장
     const newSteps = [...steps];
+    const existingUrls = newSteps[currentVerifyStep].imageUrls || [];
+    const allUrls = [...existingUrls, ...uploadedImageUrls];
+
     newSteps[currentVerifyStep].status = "completed";
-    newSteps[currentVerifyStep].imageUrl = uploadedImageUrl;
+    newSteps[currentVerifyStep].imageUrl = allUrls[0]; // 하위 호환
+    newSteps[currentVerifyStep].imageUrls = allUrls;
     setSteps(newSteps);
 
     // 모든 스텝 완료시 검토중으로 변경
@@ -338,6 +355,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
             title: ms.title.replace(/ /g, "\n"),
             status: "pending" as const,
             imageUrl: undefined,
+            imageUrls: [],
             deadline: ms.deadline,
             description: ms.description,
             exampleImages: ms.exampleImages || [],
@@ -826,6 +844,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
         stepTitle={currentVerifyStep !== null ? missionSteps[currentVerifyStep]?.title : ""}
         stepDescription={currentVerifyStep !== null ? missionSteps[currentVerifyStep]?.description : ""}
         exampleImages={currentVerifyStep !== null ? missionSteps[currentVerifyStep]?.exampleImages || [] : []}
+        existingImages={currentVerifyStep !== null ? steps[currentVerifyStep]?.imageUrls || [] : []}
         participationId={participationId || ""}
       />
 

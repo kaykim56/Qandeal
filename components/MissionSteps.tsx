@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Camera, RefreshCw, X } from "lucide-react";
+import { Camera, RefreshCw, X, ChevronLeft, ChevronRight, Images } from "lucide-react";
 
 export interface Step {
   title: string;
   status: "pending" | "completed";
-  imageUrl?: string; // 업로드된 이미지 URL
+  imageUrl?: string; // 업로드된 이미지 URL (하위 호환)
+  imageUrls?: string[]; // 업로드된 이미지들 (여러 장)
   deadline?: string; // 스텝 기한
   description?: string; // 스텝 설명
   exampleImages?: string[]; // 예시 이미지들 (여러 개 가능)
@@ -30,8 +31,20 @@ export default function MissionSteps({
   noticeText = "제품 구매 시간을 지켜야 성공으로 처리돼요!",
 }: MissionStepsProps) {
   const [previewStep, setPreviewStep] = useState<number | null>(null);
+  const [previewImageIndex, setPreviewImageIndex] = useState(0);
   const completedCount = steps.filter((s) => s.status === "completed").length;
   const currentStepIndex = steps.findIndex((s) => s.status === "pending");
+
+  // 현재 미리보기 중인 스텝의 이미지 배열
+  const getStepImages = (step: Step): string[] => {
+    if (step.imageUrls && step.imageUrls.length > 0) {
+      return step.imageUrls;
+    }
+    if (step.imageUrl) {
+      return [step.imageUrl];
+    }
+    return [];
+  };
 
   // 스텝이 4개 이상이면 그리드 레이아웃 사용
   const useGridLayout = steps.length >= 4;
@@ -151,11 +164,23 @@ export default function MissionSteps({
                 {/* 뱃지/버튼 */}
                 {isCompleted ? (
                   <button
-                    onClick={() => step.imageUrl && setPreviewStep(index)}
-                    className="px-3 py-1 rounded-full text-xs font-medium text-white cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => {
+                      const images = getStepImages(step);
+                      if (images.length > 0) {
+                        setPreviewImageIndex(0);
+                        setPreviewStep(index);
+                      }
+                    }}
+                    className="px-3 py-1 rounded-full text-xs font-medium text-white cursor-pointer hover:opacity-90 transition-opacity flex items-center gap-1"
                     style={{ backgroundColor: "#0066ff" }}
                   >
                     완료
+                    {getStepImages(step).length > 1 && (
+                      <span className="flex items-center">
+                        <Images className="w-3 h-3" />
+                        <span className="ml-0.5">{getStepImages(step).length}</span>
+                      </span>
+                    )}
                   </button>
                 ) : isCurrentStep ? (
                   <button
@@ -263,7 +288,7 @@ export default function MissionSteps({
       </div>
 
       {/* 이미지 미리보기 모달 */}
-      {previewStep !== null && steps[previewStep]?.imageUrl && (
+      {previewStep !== null && getStepImages(steps[previewStep]).length > 0 && (
         <div
           className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
           onClick={() => setPreviewStep(null)}
@@ -274,11 +299,54 @@ export default function MissionSteps({
           >
             {/* 이미지 */}
             <div className="relative">
-              <img
-                src={steps[previewStep].imageUrl}
-                alt="인증 이미지"
-                className="w-full max-h-[60vh] object-contain bg-gray-100"
-              />
+              {(() => {
+                const images = getStepImages(steps[previewStep]);
+                const currentImage = images[previewImageIndex] || images[0];
+                return (
+                  <>
+                    <img
+                      src={currentImage}
+                      alt={`인증 이미지 ${previewImageIndex + 1}`}
+                      className="w-full max-h-[60vh] object-contain bg-gray-100"
+                    />
+
+                    {/* 이미지 개수 표시 */}
+                    {images.length > 1 && (
+                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/50 rounded-full">
+                        <span className="text-white text-sm">
+                          {previewImageIndex + 1} / {images.length}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* 이전 버튼 */}
+                    {images.length > 1 && previewImageIndex > 0 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPreviewImageIndex((prev) => prev - 1);
+                        }}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 rounded-full hover:bg-black/70"
+                      >
+                        <ChevronLeft className="w-5 h-5 text-white" />
+                      </button>
+                    )}
+
+                    {/* 다음 버튼 */}
+                    {images.length > 1 && previewImageIndex < images.length - 1 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPreviewImageIndex((prev) => prev + 1);
+                        }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 rounded-full hover:bg-black/70"
+                      >
+                        <ChevronRight className="w-5 h-5 text-white" />
+                      </button>
+                    )}
+                  </>
+                );
+              })()}
               <button
                 onClick={() => setPreviewStep(null)}
                 className="absolute top-3 right-3 p-1.5 bg-black/50 rounded-full hover:bg-black/70"
@@ -286,6 +354,25 @@ export default function MissionSteps({
                 <X className="w-5 h-5 text-white" />
               </button>
             </div>
+
+            {/* 썸네일 (2장 이상일 때) */}
+            {getStepImages(steps[previewStep]).length > 1 && (
+              <div className="p-3 border-t border-gray-100">
+                <div className="flex gap-2 justify-center">
+                  {getStepImages(steps[previewStep]).map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setPreviewImageIndex(idx)}
+                      className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition-colors ${
+                        idx === previewImageIndex ? "border-orange-500" : "border-gray-200"
+                      }`}
+                    >
+                      <img src={img} alt={`썸네일 ${idx + 1}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* 하단 버튼 */}
             <div className="p-4">
@@ -299,7 +386,7 @@ export default function MissionSteps({
                   style={{ backgroundColor: "#ff6600" }}
                 >
                   <RefreshCw className="w-4 h-4" />
-                  사진 교체하기
+                  사진 추가/교체하기
                 </button>
               ) : (
                 <p className="text-center text-sm text-gray-500">

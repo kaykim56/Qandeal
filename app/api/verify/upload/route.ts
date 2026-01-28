@@ -11,6 +11,8 @@ export async function POST(request: Request): Promise<NextResponse> {
     const stepType = formData.get("stepType") as "purchase" | "review";
     const stepOrderStr = formData.get("stepOrder") as string | null;
     const stepOrder = stepOrderStr ? parseInt(stepOrderStr, 10) : undefined;
+    const imageOrderStr = formData.get("imageOrder") as string | null;
+    const imageOrder = imageOrderStr ? parseInt(imageOrderStr, 10) : 1;
 
     if (!file) {
       return NextResponse.json({ error: "파일이 없습니다" }, { status: 400 });
@@ -51,10 +53,10 @@ export async function POST(request: Request): Promise<NextResponse> {
     });
 
     console.log(`[verify/upload] Blob uploaded: ${blob.url}`);
-    console.log(`[verify/upload] participationId: ${participationId}, stepType: ${stepType}, stepOrder: ${stepOrder}`);
+    console.log(`[verify/upload] participationId: ${participationId}, stepType: ${stepType}, stepOrder: ${stepOrder}, imageOrder: ${imageOrder}`);
 
     // Supabase에서 참여 이미지 저장
-    const dbSuccess = await updateParticipationImage(participationId, stepType, blob.url, stepOrder);
+    const dbSuccess = await updateParticipationImage(participationId, stepType, blob.url, stepOrder, imageOrder);
 
     if (!dbSuccess) {
       console.error(`[verify/upload] Failed to save image to DB for participation: ${participationId}`);

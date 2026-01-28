@@ -16,13 +16,14 @@ export interface Participation {
   reviewedBy?: string;
   testerEmail?: string;
   phoneNumber?: string;
-  // 동적 스텝 지원: 모든 이미지 배열
-  images?: Array<{ stepOrder: number; imageUrl: string }>;
+  // 동적 스텝 지원: 모든 이미지 배열 (imageOrder로 정렬)
+  images?: Array<{ stepOrder: number; imageOrder: number; imageUrl: string }>;
 }
 
 export interface ParticipationWithImages extends Participation {
   images: Array<{
     stepOrder: number;
+    imageOrder: number;
     imageUrl: string;
   }>;
 }
@@ -44,17 +45,24 @@ function dbToParticipation(
     created_at: string;
     updated_at: string;
   },
-  images?: Array<{ step_order: number; image_url: string }>
+  images?: Array<{ step_order: number; image_order?: number; image_url: string }>
 ): Participation {
   // 이미지 데이터에서 purchaseImageUrl, reviewImageUrl 추출 (하위 호환)
   const purchaseImage = images?.find((i) => i.step_order === 1);
   const reviewImage = images?.find((i) => i.step_order === 2);
 
-  // 모든 이미지 배열 (동적 스텝 지원)
-  const allImages = images?.map((i) => ({
-    stepOrder: i.step_order,
-    imageUrl: i.image_url,
-  })) || [];
+  // 모든 이미지 배열 (동적 스텝 지원 + imageOrder로 정렬)
+  const allImages = (images || [])
+    .sort((a, b) => {
+      // stepOrder로 먼저 정렬, 같으면 imageOrder로 정렬
+      if (a.step_order !== b.step_order) return a.step_order - b.step_order;
+      return (a.image_order || 1) - (b.image_order || 1);
+    })
+    .map((i) => ({
+      stepOrder: i.step_order,
+      imageOrder: i.image_order || 1,
+      imageUrl: i.image_url,
+    }));
 
   return {
     id: row.id,
@@ -86,7 +94,7 @@ export async function getParticipation(
     .from("participations")
     .select(`
       *,
-      participation_images (step_order, image_url)
+      participation_images (step_order, image_order, image_url)
     `)
     .eq("challenge_id", challengeId)
     .eq("qanda_user_id", userId)
@@ -100,7 +108,8 @@ export async function getParticipation(
     return null;
   }
 
-  const images = data.participation_images as Array<{ step_order: number; image_url: string }> | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const images = data.participation_images as any as Array<{ step_order: number; image_order?: number; image_url: string }> | undefined;
   return dbToParticipation(data, images);
 }
 
@@ -160,15 +169,18 @@ export async function updateParticipationImage(
   participationId: string,
   stepType: "purchase" | "review",
   imageUrl: string,
-  stepOrder?: number
+  stepOrder?: number,
+  imageOrder?: number
 ): Promise<boolean> {
   const supabase = createServiceRoleClient();
 
   // stepOrder 결정
   const order = stepOrder !== undefined ? stepOrder : stepType === "purchase" ? 1 : 2;
+  // imageOrder 결정 (기본값 1)
+  const imgOrder = imageOrder !== undefined ? imageOrder : 1;
 
   console.log(
-    `[updateParticipationImage] participationId: ${participationId}, stepType: ${stepType}, stepOrder: ${order}`
+    `[updateParticipationImage] participationId: ${participationId}, stepType: ${stepType}, stepOrder: ${order}, imageOrder: ${imgOrder}`
   );
 
   // upsert로 이미지 저장 (기존 것 있으면 업데이트)
@@ -176,7 +188,7 @@ export async function updateParticipationImage(
     {
       participation_id: participationId,
       step_order: order,
-      image_order: 1,  // 스텝당 첫 번째 이미지
+      image_order: imgOrder,
       image_url: imageUrl,
     },
     {
@@ -189,7 +201,7 @@ export async function updateParticipationImage(
     return false;
   }
 
-  console.log(`[updateParticipationImage] Successfully updated step ${order} image`);
+  console.log(`[updateParticipationImage] Successfully updated step ${order}, image ${imgOrder}`);
   return true;
 }
 
@@ -204,7 +216,7 @@ export async function getAllParticipations(): Promise<Participation[]> {
     .from("participations")
     .select(`
       *,
-      participation_images (step_order, image_url)
+      participation_images (step_order, image_order, image_url)
     `)
     .order("created_at", { ascending: false });
 
@@ -214,7 +226,7 @@ export async function getAllParticipations(): Promise<Participation[]> {
   }
 
   return (data || []).map((row) => {
-    const images = row.participation_images as Array<{ step_order: number; image_url: string }> | undefined;
+    const images = row.participation_images as any as Array<{ step_order: number; image_order?: number; image_url: string }> | undefined;
     return dbToParticipation(row, images);
   });
 }
@@ -226,7 +238,7 @@ export async function getParticipationById(id: string): Promise<Participation | 
     .from("participations")
     .select(`
       *,
-      participation_images (step_order, image_url)
+      participation_images (step_order, image_order, image_url)
     `)
     .eq("id", id)
     .single();
@@ -236,7 +248,7 @@ export async function getParticipationById(id: string): Promise<Participation | 
     return null;
   }
 
-  const images = data.participation_images as Array<{ step_order: number; image_url: string }> | undefined;
+  const images = data.participation_images as any as Array<{ step_order: number; image_order?: number; image_url: string }> | undefined;
   return dbToParticipation(data, images);
 }
 
@@ -279,7 +291,7 @@ export async function removeDuplicateParticipations(): Promise<{ removed: number
     .from("participations")
     .select(`
       *,
-      participation_images (step_order, image_url)
+      participation_images (step_order, image_order, image_url)
     `)
     .order("created_at", { ascending: false });
 
@@ -306,8 +318,8 @@ export async function removeDuplicateParticipations(): Promise<{ removed: number
         if (a.status === "approved" && b.status !== "approved") return -1;
         if (b.status === "approved" && a.status !== "approved") return 1;
 
-        const aImages = a.participation_images as Array<{ step_order: number; image_url: string }> | undefined;
-        const bImages = b.participation_images as Array<{ step_order: number; image_url: string }> | undefined;
+        const aImages = a.participation_images as any as Array<{ step_order: number; image_order?: number; image_url: string }> | undefined;
+        const bImages = b.participation_images as any as Array<{ step_order: number; image_order?: number; image_url: string }> | undefined;
         const aHasImage = (aImages?.length || 0) > 0;
         const bHasImage = (bImages?.length || 0) > 0;
         if (aHasImage && !bHasImage) return -1;
