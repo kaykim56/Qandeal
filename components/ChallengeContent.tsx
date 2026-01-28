@@ -84,6 +84,15 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
     console.log("[Challenge] Cookies:", document.cookie);
     console.log("[Challenge] isQandaUser:", isQandaUser);
     console.log("[Challenge] qandaUserId:", qandaUser?.userId);
+
+    // 서버에서 받은 헤더 확인
+    fetch("/api/debug-headers")
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("[Challenge] Server Headers:", JSON.stringify(data.headers, null, 2));
+        console.log("[Challenge] Server Cookies:", JSON.stringify(data.cookies, null, 2));
+      })
+      .catch((err) => console.error("[Challenge] Debug fetch error:", err));
   }, [isQandaUser, qandaUser]);
   const [hasParticipated, setHasParticipated] = useState(false);
   const [participationId, setParticipationId] = useState<string | null>(null);
