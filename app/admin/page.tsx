@@ -1,16 +1,18 @@
 "use client";
 
-import { useSession, signOut } from "next-auth/react";
+import { createBrowserSupabaseClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Plus, Edit, Trash2, ExternalLink, LogOut, Loader2, RefreshCw, ClipboardCheck, X, ChevronDown, ChevronUp, Database, Copy, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { Challenge } from "@/lib/types";
+import type { User } from "@supabase/supabase-js";
 
 export default function AdminDashboard() {
-  const { data: session, status } = useSession();
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const supabase = createBrowserSupabaseClient();
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
@@ -39,16 +41,34 @@ export default function AdminDashboard() {
   const publishedCount = challenges.filter((c) => c.status === "published").length;
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/admin/login");
-    }
-  }, [status, router]);
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
 
-  useEffect(() => {
-    if (session) {
+      if (!session?.user) {
+        router.push("/admin/login");
+        return;
+      }
+
+      // 관리자 권한 체크
+      const { data: adminUser } = await supabase
+        .from("admin_users")
+        .select("id")
+        .eq("email", session.user.email || "")
+        .single();
+
+      if (!adminUser) {
+        await supabase.auth.signOut();
+        router.push("/admin/login");
+        return;
+      }
+
+      setUser(session.user);
       fetchChallenges();
-    }
-  }, [session]);
+    };
+
+    checkAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchChallenges = async () => {
     try {
@@ -277,7 +297,12 @@ export default function AdminDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cleanupOpen]);
 
-  if (status === "loading" || loading) {
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push("/admin/login");
+  };
+
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-gray-500">로딩 중...</div>
@@ -285,7 +310,7 @@ export default function AdminDashboard() {
     );
   }
 
-  if (!session) {
+  if (!user) {
     return null;
   }
 
@@ -298,7 +323,7 @@ export default function AdminDashboard() {
 
           {/* 모바일: 로그아웃 아이콘만 */}
           <button
-            onClick={() => signOut()}
+            onClick={handleSignOut}
             className="md:hidden flex items-center justify-center w-9 h-9 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200"
           >
             <LogOut className="w-4 h-4" />
@@ -307,12 +332,12 @@ export default function AdminDashboard() {
           {/* 태블릿+: 이메일 + 로그아웃 */}
           <div className="hidden md:flex items-center gap-3 bg-gray-50 rounded-lg px-4 py-2">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-sm font-bold uppercase">
-              {session.user?.email?.charAt(0) || "?"}
+              {user?.email?.charAt(0) || "?"}
             </div>
-            <span className="text-sm text-gray-700">{session.user?.email}</span>
+            <span className="text-sm text-gray-700">{user?.email}</span>
             <div className="w-px h-5 bg-gray-300" />
             <button
-              onClick={() => signOut()}
+              onClick={handleSignOut}
               className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
             >
               <LogOut className="w-4 h-4" />

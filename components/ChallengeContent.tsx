@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { createBrowserSupabaseClient } from "@/lib/supabase";
 import { Info, Clock, Check, ChevronUp } from "lucide-react";
 import MissionSteps, { Step } from "./MissionSteps";
 import VerifyUploadModal from "./VerifyUploadModal";
@@ -76,8 +76,20 @@ function FormattedDescription({ text }: { text: string }) {
 }
 
 export default function ChallengeContent({ challenge }: ChallengeContentProps) {
-  const { data: session } = useSession();
   const { user: qandaUser, isQandaUser } = useQandaUser();
+  const [adminEmail, setAdminEmail] = useState<string | null>(null);
+  const supabase = createBrowserSupabaseClient();
+
+  // Supabase 세션에서 어드민 이메일 확인
+  useEffect(() => {
+    const checkAdminSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.email) {
+        setAdminEmail(session.user.email);
+      }
+    };
+    checkAdminSession();
+  }, [supabase.auth]);
 
   // 콴다 유저 디버깅 로그
   useEffect(() => {
@@ -177,9 +189,9 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
   // 교체 가능 조건: 승인/거절 전 AND 마지막 기한 내
   const canReplace = participationStatus === "pending" && !isLastDeadlinePassed;
 
-  // 테스터 여부 확인
+  // 테스터 여부 확인 (Supabase에 로그인된 어드민 이메일로 체크)
   const allowedEmails = (process.env.NEXT_PUBLIC_ALLOWED_EMAILS || "").split(",");
-  const isTester = session?.user?.email && allowedEmails.includes(session.user.email);
+  const isTester = adminEmail && allowedEmails.includes(adminEmail);
 
   // userId: Qanda 앱 쿠키 → localStorage 폴백 → guest ID
   const userId = qandaUser?.userId
@@ -284,7 +296,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
         body: JSON.stringify({
           challengeId: challenge.id,
           userId,
-          testerEmail: session?.user?.email || undefined,
+          testerEmail: adminEmail || undefined,
           phoneNumber,
           verificationToken,
         }),

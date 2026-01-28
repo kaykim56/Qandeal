@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { createBrowserSupabaseClient } from "@/lib/supabase";
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Save, X, ExternalLink, Loader2, LinkIcon, ImageIcon, GripVertical, ZoomIn, Eye, EyeOff, Plus, Trash2, ChevronUp, ChevronDown, Upload, Copy } from "lucide-react";
@@ -8,12 +8,15 @@ import Link from "next/link";
 import { ChallengeWithMissions, MissionStep } from "@/lib/types";
 import ChallengePreview from "@/components/ChallengePreview";
 import { StepPreset, getAllPresets, saveCustomPreset, deleteCustomPreset, DEFAULT_STEP_PRESETS } from "@/lib/step-presets";
+import type { User } from "@supabase/supabase-js";
 
 export default function EditChallengePage() {
-  const { data: session, status } = useSession();
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
+  const [user, setUser] = useState<User | null>(null);
+  const [authChecking, setAuthChecking] = useState(true);
+  const supabase = createBrowserSupabaseClient();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -68,19 +71,43 @@ export default function EditChallengePage() {
   const [showPresetManager, setShowPresetManager] = useState(false);
   const [uploadingExampleImage, setUploadingExampleImage] = useState<number | null>(null);
 
+  // Supabase Auth 체크
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/admin/login");
-    }
-  }, [status, router]);
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.user) {
+        router.push("/admin/login");
+        return;
+      }
+
+      // 관리자 권한 체크
+      const { data: adminUser } = await supabase
+        .from("admin_users")
+        .select("id")
+        .eq("email", session.user.email || "")
+        .single();
+
+      if (!adminUser) {
+        await supabase.auth.signOut();
+        router.push("/admin/login");
+        return;
+      }
+
+      setUser(session.user);
+      setAuthChecking(false);
+    };
+
+    checkAuth();
+  }, [router, supabase]);
 
   useEffect(() => {
-    if (session && id) {
+    if (user && id) {
       fetchChallenge();
     }
     // 프리셋 로드
     setStepPresets(getAllPresets());
-  }, [session, id]);
+  }, [user, id]);
 
   const fetchChallenge = async () => {
     try {
@@ -450,7 +477,7 @@ export default function EditChallengePage() {
     ? `${window.location.origin}/challenge/${id}`
     : `/challenge/${id}`;
 
-  if (status === "loading" || loading) {
+  if (authChecking || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-gray-500">로딩 중...</div>
@@ -458,7 +485,7 @@ export default function EditChallengePage() {
     );
   }
 
-  if (!session) return null;
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-gray-100">

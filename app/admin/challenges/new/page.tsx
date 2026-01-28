@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { createBrowserSupabaseClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { ArrowLeft, Save, X, Loader2, ImageIcon, Sparkles, ExternalLink, Check, GripVertical, ZoomIn, Plus, Trash2, ChevronUp, ChevronDown, BookmarkPlus, Upload } from "lucide-react";
@@ -8,12 +8,15 @@ import Link from "next/link";
 import ChallengePreview from "@/components/ChallengePreview";
 import { MissionStep } from "@/lib/types";
 import { StepPreset, getAllPresets, saveCustomPreset, deleteCustomPreset, DEFAULT_STEP_PRESETS } from "@/lib/step-presets";
+import type { User } from "@supabase/supabase-js";
 
 const AUTOSAVE_KEY = "challenge-draft";
 
 export default function NewChallengePage() {
-  const { data: session, status } = useSession();
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [authChecking, setAuthChecking] = useState(true);
+  const supabase = createBrowserSupabaseClient();
   const [saving, setSaving] = useState(false);
   const [fetchingProduct, setFetchingProduct] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -83,11 +86,35 @@ export default function NewChallengePage() {
     setStepPresets(getAllPresets());
   }, []);
 
+  // Supabase Auth 체크
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/admin/login");
-    }
-  }, [status, router]);
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.user) {
+        router.push("/admin/login");
+        return;
+      }
+
+      // 관리자 권한 체크
+      const { data: adminUser } = await supabase
+        .from("admin_users")
+        .select("id")
+        .eq("email", session.user.email || "")
+        .single();
+
+      if (!adminUser) {
+        await supabase.auth.signOut();
+        router.push("/admin/login");
+        return;
+      }
+
+      setUser(session.user);
+      setAuthChecking(false);
+    };
+
+    checkAuth();
+  }, [router, supabase]);
 
   // 자동저장 함수
   const autoSave = useCallback(() => {
@@ -495,7 +522,7 @@ export default function NewChallengePage() {
     setFetchSuccess(null);
   };
 
-  if (status === "loading") {
+  if (authChecking) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-gray-500">로딩 중...</div>
@@ -503,7 +530,7 @@ export default function NewChallengePage() {
     );
   }
 
-  if (!session) return null;
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-gray-100">
