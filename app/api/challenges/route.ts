@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getAllChallenges, createChallenge } from "@/lib/google-sheets";
+import { getAllChallenges, createChallenge } from "@/lib/db/challenges";
 import { ChallengeInput } from "@/lib/types";
 
 // GET /api/challenges - 모든 챌린지 조회
 export async function GET() {
   try {
     const challenges = await getAllChallenges();
-    // deleted 상태 제외
-    const activeChallenges = challenges.filter((c) => c.status !== "deleted");
-    return NextResponse.json(activeChallenges);
+    return NextResponse.json(challenges);
   } catch (error) {
     console.error("Failed to fetch challenges:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";

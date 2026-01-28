@@ -180,13 +180,13 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
   const allowedEmails = (process.env.NEXT_PUBLIC_ALLOWED_EMAILS || "").split(",");
   const isTester = session?.user?.email && allowedEmails.includes(session.user.email);
 
-  // 임시 userId (나중에 실제 인증 시스템으로 교체)
-  const userId = typeof window !== "undefined"
-    ? localStorage.getItem("userId") || `user_${Date.now()}`
-    : `user_${Date.now()}`;
+  // userId: Qanda 앱 쿠키 → localStorage 폴백 → guest ID
+  const userId = qandaUser?.userId
+    || (typeof window !== "undefined" ? localStorage.getItem("userId") : null)
+    || `guest_${Date.now()}`;
 
-  // userId 저장
-  if (typeof window !== "undefined" && !localStorage.getItem("userId")) {
+  // localStorage 폴백용 ID 저장 (qandaUser가 없는 경우에만)
+  if (typeof window !== "undefined" && !qandaUser?.userId && !localStorage.getItem("userId")) {
     localStorage.setItem("userId", userId);
   }
 

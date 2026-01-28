@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getChallengeById, updateChallenge, deleteChallenge, updateMissionImages } from "@/lib/google-sheets";
+import { getChallengeById, updateChallenge, deleteChallenge } from "@/lib/db/challenges";
 
 // GET /api/challenges/[id] - 특정 챌린지 조회
 export async function GET(
@@ -37,14 +37,7 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    // missionSteps가 있으면 새 형식 사용, 없을 때만 구 형식 사용
-    if (!body.missionSteps && (body.purchaseExampleImage || body.reviewExampleImage)) {
-      await updateMissionImages(
-        id,
-        body.purchaseExampleImage || "",
-        body.reviewExampleImage || ""
-      );
-    }
+    // 구 형식 필드 제거 (missionSteps 사용)
     delete body.purchaseExampleImage;
     delete body.reviewExampleImage;
 

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getAllChallenges } from "@/lib/google-sheets";
+import { getAllChallenges } from "@/lib/db/challenges";
 import { Challenge } from "@/lib/types";
 
 // 페이지를 항상 동적으로 렌더링 (캐시 비활성화)

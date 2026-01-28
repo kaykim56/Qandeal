@@ -1,6 +1,6 @@
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
-import { updateParticipationImage } from "@/lib/google-sheets";
+import { updateParticipationImage } from "@/lib/db/participations";
 
 // POST /api/verify/upload - 인증 사진 업로드 (Vercel Blob)
 export async function POST(request: Request): Promise<NextResponse> {
@@ -50,7 +50,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       addRandomSuffix: false,
     });
 
-    // Google Sheets에서 참여 레코드 업데이트
+    // Supabase에서 참여 레코드 업데이트
     await updateParticipationImage(participationId, stepType, blob.url, stepOrder);
 
     return NextResponse.json({

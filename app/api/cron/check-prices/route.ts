@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllChallenges, updateChallenge } from "@/lib/google-sheets";
+import { getAllChallenges, updateChallenge } from "@/lib/db/challenges";
 
 // Vercel Cron Job을 위한 인증
 const CRON_SECRET = process.env.CRON_SECRET;

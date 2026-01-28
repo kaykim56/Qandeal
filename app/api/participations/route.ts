@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createParticipation, getParticipation, deleteParticipation } from "@/lib/google-sheets";
+import { createParticipation, getParticipation, deleteParticipation } from "@/lib/db/participations";
 import { verifyToken } from "@/app/api/sms/verify/route";
 
 // GET /api/participations?challengeId=xxx&userId=xxx - 참여 정보 조회

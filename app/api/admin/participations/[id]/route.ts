@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { updateParticipationStatus } from "@/lib/google-sheets";
+import { updateParticipationStatus } from "@/lib/db/participations";
 
 // PATCH /api/admin/participations/[id] - 참여 상태 업데이트
 export async function PATCH(

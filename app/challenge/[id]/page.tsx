@@ -4,7 +4,7 @@
 // 캐싱 비활성화 - 항상 최신 데이터 가져오기
 export const dynamic = "force-dynamic";
 
-import { getChallengeById } from "@/lib/google-sheets";
+import { getChallengeById } from "@/lib/db/challenges";
 import { notFound } from "next/navigation";
 import ChallengeContent from "@/components/ChallengeContent";
 import ShareButton from "@/components/ShareButton";
@@ -43,16 +43,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function ChallengeDetailPage({ params }: PageProps) {
   const { id } = await params;
 
-  // Google Sheets 연동 전에는 더미 데이터 사용
+  // Supabase에서 챌린지 조회
   let challenge;
   try {
     challenge = await getChallengeById(id);
   } catch {
-    // API 연동 전 또는 에러 시 더미 데이터
     challenge = null;
   }
 
-  // 더미 데이터 (Sheets 연동 전)
+  // 더미 데이터 (DB 연동 전 또는 에러 시)
   if (!challenge) {
     challenge = {
       id: "1",

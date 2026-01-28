@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getChallengeById, createChallenge, updateMissionSteps } from "@/lib/google-sheets";
+import { getChallengeById, createChallenge, updateMissionSteps } from "@/lib/db/challenges";
 
 // POST /api/admin/challenges/clone - 챌린지 복제
 export async function POST(request: NextRequest) {
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Challenge not found" }, { status: 404 });
     }
 
-    // 새 챌린지 생성 (새 nanoid가 자동으로 생성됨)
+    // 새 챌린지 생성 (새 UUID가 자동으로 생성됨)
     const newId = await createChallenge({
       platform: existing.platform,
       title: existing.title,
