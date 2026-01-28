@@ -176,10 +176,11 @@ export async function updateParticipationImage(
     {
       participation_id: participationId,
       step_order: order,
+      image_order: 1,  // 스텝당 첫 번째 이미지
       image_url: imageUrl,
     },
     {
-      onConflict: "participation_id,step_order",
+      onConflict: "participation_id,step_order,image_order",
     }
   );
 
