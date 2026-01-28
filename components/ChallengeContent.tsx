@@ -8,6 +8,7 @@ import VerifyUploadModal from "./VerifyUploadModal";
 import PhoneVerificationModal from "./PhoneVerificationModal";
 import Link from "next/link";
 import { MissionStep } from "@/lib/types";
+import { useQandaUser } from "./QandaUserProvider";
 
 interface ChallengeContentProps {
   challenge: {
@@ -76,6 +77,14 @@ function FormattedDescription({ text }: { text: string }) {
 
 export default function ChallengeContent({ challenge }: ChallengeContentProps) {
   const { data: session } = useSession();
+  const { user: qandaUser, isQandaUser } = useQandaUser();
+
+  // 콴다 유저 디버깅 로그
+  useEffect(() => {
+    console.log("[Challenge] Cookies:", document.cookie);
+    console.log("[Challenge] isQandaUser:", isQandaUser);
+    console.log("[Challenge] qandaUserId:", qandaUser?.userId);
+  }, [isQandaUser, qandaUser]);
   const [hasParticipated, setHasParticipated] = useState(false);
   const [participationId, setParticipationId] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
