@@ -111,11 +111,14 @@ export async function getAllChallenges(): Promise<Challenge[]> {
 export async function getChallengeById(id: string): Promise<ChallengeWithMissions | null> {
   const supabase = createServiceRoleClient();
 
-  // 챌린지 조회
+  // UUID 형식인지 확인 (UUID는 36자, short_id는 8자)
+  const isUUID = id.length === 36 && id.includes("-");
+
+  // 챌린지 조회 (UUID 또는 short_id로)
   const { data: challenge, error: challengeError } = await supabase
     .from("challenges")
     .select("*")
-    .eq("id", id)
+    .eq(isUUID ? "id" : "short_id", id)
     .single();
 
   if (challengeError || !challenge) {
