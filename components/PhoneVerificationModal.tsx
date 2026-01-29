@@ -3,18 +3,25 @@
 import { useState, useEffect, useRef } from "react";
 import { ChevronLeft, Delete, Check } from "lucide-react";
 import TermsModal from "./TermsModal";
+import { trackEvent, identifyByPhone } from "./MixpanelProvider";
+import { useQandaUser } from "./QandaUserProvider";
 
 interface PhoneVerificationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onVerified: (phoneNumber: string, verificationToken: string) => void;
+  challengeId?: string;
+  challengeTitle?: string;
 }
 
 export default function PhoneVerificationModal({
   isOpen,
   onClose,
   onVerified,
+  challengeId,
+  challengeTitle,
 }: PhoneVerificationModalProps) {
+  const { user: qandaUser } = useQandaUser();
   const [step, setStep] = useState<"phone" | "code">("phone");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
@@ -127,6 +134,13 @@ export default function PhoneVerificationModal({
         return;
       }
 
+      // Mixpanel - phone_verify_request 이벤트
+      trackEvent("phone_verify_request", {
+        challenge_id: challengeId,
+        challenge_title: challengeTitle,
+        phone_number: getFullPhoneNumber().replace(/(\d{3})\d{4}(\d{4})/, "$1****$2"),
+      });
+
       setStep("code");
       setTimeLeft(300);
       setCode("");
@@ -162,6 +176,16 @@ export default function PhoneVerificationModal({
         setCode("");
         return;
       }
+
+      // Mixpanel - phone_verify_success 이벤트
+      trackEvent("phone_verify_success", {
+        challenge_id: challengeId,
+        challenge_title: challengeTitle,
+        phone_number: data.phoneNumber,
+      });
+
+      // Mixpanel - 전화번호로 identify 변경
+      identifyByPhone(data.phoneNumber, qandaUser?.userId);
 
       onVerified(data.phoneNumber, data.verificationToken);
     } catch {
@@ -523,24 +547,32 @@ export default function PhoneVerificationModal({
         onClose={() => setShowTermsModal(false)}
         onAgree={() => setTermsAgreed(true)}
         type="terms_of_service"
+        challengeId={challengeId}
+        challengeTitle={challengeTitle}
       />
       <TermsModal
         isOpen={showPrivacyCollectionModal}
         onClose={() => setShowPrivacyCollectionModal(false)}
         onAgree={() => setPrivacyCollectionAgreed(true)}
         type="privacy_collection"
+        challengeId={challengeId}
+        challengeTitle={challengeTitle}
       />
       <TermsModal
         isOpen={showPrivacyThirdPartyModal}
         onClose={() => setShowPrivacyThirdPartyModal(false)}
         onAgree={() => setPrivacyThirdPartyAgreed(true)}
         type="privacy_third_party"
+        challengeId={challengeId}
+        challengeTitle={challengeTitle}
       />
       <TermsModal
         isOpen={showMarketingModal}
         onClose={() => setShowMarketingModal(false)}
         onAgree={() => setMarketingAgreed(true)}
         type="marketing"
+        challengeId={challengeId}
+        challengeTitle={challengeTitle}
       />
     </div>
   );

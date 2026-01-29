@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { X, Image, Upload, Loader2, Plus, Trash2 } from "lucide-react";
+import { trackEvent } from "./MixpanelProvider";
 
 const MAX_IMAGES = 3;
 
@@ -66,6 +67,9 @@ interface VerifyUploadModalProps {
   stepDescription?: string;
   exampleImages?: string[]; // 예시 이미지들
   existingImages?: string[]; // 기존 업로드된 이미지들
+  // Mixpanel 이벤트용
+  challengeId?: string;
+  challengeTitle?: string;
 }
 
 export default function VerifyUploadModal({
@@ -79,6 +83,8 @@ export default function VerifyUploadModal({
   stepDescription: propStepDescription,
   exampleImages = [],
   existingImages = [],
+  challengeId,
+  challengeTitle,
 }: VerifyUploadModalProps) {
   const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -212,6 +218,15 @@ export default function VerifyUploadModal({
         uploadedUrls.push(data.url);
         setUploadProgress(Math.round(((i + 1) / selectedImages.length) * 100));
       }
+
+      // Mixpanel - step_upload 이벤트
+      trackEvent("step_upload", {
+        challenge_id: challengeId,
+        challenge_title: challengeTitle,
+        step_order: stepOrder,
+        step_title: propStepTitle,
+        image_count: uploadedUrls.length,
+      });
 
       onSuccess(uploadedUrls);
       handleClose();

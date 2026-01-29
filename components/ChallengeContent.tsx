@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase";
 import { Info, Clock, Check, ChevronUp } from "lucide-react";
 import MissionSteps, { Step } from "./MissionSteps";
@@ -9,10 +9,12 @@ import PhoneVerificationModal from "./PhoneVerificationModal";
 import Link from "next/link";
 import { MissionStep } from "@/lib/types";
 import { useQandaUser } from "./QandaUserProvider";
+import { trackEvent } from "./MixpanelProvider";
 
 interface ChallengeContentProps {
   challenge: {
     id: string;
+    shortId?: string;
     platform: string;
     title: string;
     option: string;
@@ -106,6 +108,19 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
       })
       .catch((err) => console.error("[Challenge] Debug fetch error:", err));
   }, [isQandaUser, qandaUser]);
+
+  // Mixpanel - challenge_view 이벤트 (페이지 진입 시 1회)
+  const hasTrackedView = useRef(false);
+  useEffect(() => {
+    if (!hasTrackedView.current) {
+      trackEvent("challenge_view", {
+        challenge_id: challenge.id,
+        challenge_title: challenge.title,
+        challenge_short_id: challenge.shortId || null,
+      });
+      hasTrackedView.current = true;
+    }
+  }, [challenge.id, challenge.title, challenge.shortId]);
   const [hasParticipated, setHasParticipated] = useState(false);
   const [participationId, setParticipationId] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -277,6 +292,10 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
 
   // 참가하기 버튼 클릭 → 전화번호 인증 모달 열기
   const handleParticipate = () => {
+    trackEvent("participate_start", {
+      challenge_id: challenge.id,
+      challenge_title: challenge.title,
+    });
     setIsPhoneVerificationOpen(true);
   };
 
@@ -343,9 +362,65 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
     // 모든 스텝 완료시 검토중으로 변경
     if (newSteps.every((s) => s.status === "completed")) {
       setPaybackStatus("reviewing");
+
+      // Mixpanel - participate_complete 이벤트
+      trackEvent("participate_complete", {
+        challenge_id: challenge.id,
+        challenge_title: challenge.title,
+      });
     }
 
     setCurrentVerifyStep(null);
+  };
+
+  // 이미지 삭제 핸들러 (soft delete)
+  const handleDeleteImage = async (stepIndex: number, imageIndex: number) => {
+    if (!participationId) return;
+
+    const stepOrder = stepIndex + 1;
+    const imageOrder = imageIndex + 1;
+
+    const res = await fetch("/api/verify/upload", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        participationId,
+        stepOrder,
+        imageOrder,
+      }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || "이미지 삭제에 실패했습니다");
+    }
+
+    // 로컬 상태 업데이트
+    const newSteps = [...steps];
+    const currentImages = newSteps[stepIndex].imageUrls || [];
+    const newImages = currentImages.filter((_, idx) => idx !== imageIndex);
+
+    if (newImages.length === 0) {
+      // 이미지가 없으면 스텝을 pending으로 변경
+      newSteps[stepIndex] = {
+        ...newSteps[stepIndex],
+        status: "pending",
+        imageUrl: undefined,
+        imageUrls: [],
+      };
+      // 페이백 상태도 업데이트
+      if (paybackStatus === "reviewing") {
+        setPaybackStatus("pending");
+      }
+    } else {
+      newSteps[stepIndex] = {
+        ...newSteps[stepIndex],
+        imageUrl: newImages[0],
+        imageUrls: newImages,
+      };
+    }
+
+    setSteps(newSteps);
   };
 
   // 테스터 참여 기록 초기화
@@ -447,6 +522,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
             paybackAmount={challenge.paybackAmount}
             paybackStatus={paybackStatus}
             onVerify={handleVerify}
+            onDeleteImage={handleDeleteImage}
             canReplace={canReplace}
             noticeText={getNoticeText()}
           />
@@ -858,12 +934,16 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
         exampleImages={currentVerifyStep !== null ? missionSteps[currentVerifyStep]?.exampleImages || [] : []}
         existingImages={currentVerifyStep !== null ? steps[currentVerifyStep]?.imageUrls || [] : []}
         participationId={participationId || ""}
+        challengeId={challenge.id}
+        challengeTitle={challenge.title}
       />
 
       <PhoneVerificationModal
         isOpen={isPhoneVerificationOpen}
         onClose={() => setIsPhoneVerificationOpen(false)}
         onVerified={handlePhoneVerified}
+        challengeId={challenge.id}
+        challengeTitle={challenge.title}
       />
     </>
   );

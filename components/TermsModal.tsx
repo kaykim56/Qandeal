@@ -2,15 +2,18 @@
 
 import { X } from "lucide-react";
 import { TERMS_OF_SERVICE, PRIVACY_COLLECTION, PRIVACY_THIRD_PARTY, MARKETING_CONSENT } from "@/lib/terms";
+import { trackEvent } from "./MixpanelProvider";
 
 interface TermsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAgree: () => void;
   type: "terms_of_service" | "privacy_collection" | "privacy_third_party" | "marketing";
+  challengeId?: string;
+  challengeTitle?: string;
 }
 
-export default function TermsModal({ isOpen, onClose, onAgree, type }: TermsModalProps) {
+export default function TermsModal({ isOpen, onClose, onAgree, type, challengeId, challengeTitle }: TermsModalProps) {
   if (!isOpen) return null;
 
   const titleMap = {
@@ -56,6 +59,11 @@ export default function TermsModal({ isOpen, onClose, onAgree, type }: TermsModa
       <div className="p-4 border-t">
         <button
           onClick={() => {
+            trackEvent("terms_agree", {
+              challenge_id: challengeId,
+              challenge_title: challengeTitle,
+              terms_type: type,
+            });
             onAgree();
             onClose();
           }}

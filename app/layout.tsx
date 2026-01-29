@@ -4,6 +4,7 @@ import { decodeJwt } from "jose";
 import "./globals.css";
 import Providers from "@/components/Providers";
 import { QandaUserProvider } from "@/components/QandaUserProvider";
+import { MixpanelProvider } from "@/components/MixpanelProvider";
 
 export const metadata: Metadata = {
   title: "QANDA 챌린지 - 90% 페이백",
@@ -82,11 +83,13 @@ export default async function RootLayout({
       <body className="font-sans antialiased bg-gray-100 min-h-screen">
         <Providers>
           <QandaUserProvider userId={userId}>
-            <div className="flex justify-center min-h-screen">
-              <div className="w-full max-w-[430px] bg-white shadow-xl relative">
-                {children}
+            <MixpanelProvider>
+              <div className="flex justify-center min-h-screen">
+                <div className="w-full max-w-[430px] bg-white shadow-xl relative">
+                  {children}
+                </div>
               </div>
-            </div>
+            </MixpanelProvider>
           </QandaUserProvider>
         </Providers>
       </body>
