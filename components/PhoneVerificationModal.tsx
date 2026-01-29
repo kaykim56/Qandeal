@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronLeft, Delete } from "lucide-react";
+import { ChevronLeft, Delete, Check } from "lucide-react";
+import TermsModal from "./TermsModal";
 
 interface PhoneVerificationModalProps {
   isOpen: boolean;
@@ -21,6 +22,16 @@ export default function PhoneVerificationModal({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // 약관 동의 상태
+  const [termsAgreed, setTermsAgreed] = useState(false);
+  const [privacyCollectionAgreed, setPrivacyCollectionAgreed] = useState(false);
+  const [privacyThirdPartyAgreed, setPrivacyThirdPartyAgreed] = useState(false);
+  const [marketingAgreed, setMarketingAgreed] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showPrivacyCollectionModal, setShowPrivacyCollectionModal] = useState(false);
+  const [showPrivacyThirdPartyModal, setShowPrivacyThirdPartyModal] = useState(false);
+  const [showMarketingModal, setShowMarketingModal] = useState(false);
+
   // 타이머 관리
   useEffect(() => {
     if (timeLeft > 0) {
@@ -39,8 +50,15 @@ export default function PhoneVerificationModal({
       setCode("");
       setTimeLeft(0);
       setError("");
+      setTermsAgreed(false);
+      setPrivacyCollectionAgreed(false);
+      setPrivacyThirdPartyAgreed(false);
+      setMarketingAgreed(false);
     }
   }, [isOpen]);
+
+  // 필수 약관 모두 동의 여부 (선택 항목은 제외)
+  const allRequiredTermsAgreed = termsAgreed && privacyCollectionAgreed && privacyThirdPartyAgreed;
 
   // 전화번호 포맷팅 (0000-0000)
   const formatPhone = (value: string) => {
@@ -187,13 +205,13 @@ export default function PhoneVerificationModal({
       </header>
 
       {/* 본문 */}
-      <div className="flex-1 px-6 pt-8">
+      <div className="flex-1 px-6 pt-4">
         {step === "phone" ? (
           <>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">
               휴대폰 번호를 입력해주세요
             </h1>
-            <p className="text-gray-500 mb-12">
+            <p className="text-gray-500 mb-6">
               페이백 지급을 위해 본인 확인이 필요해요
             </p>
 
@@ -296,17 +314,148 @@ export default function PhoneVerificationModal({
           </button>
         </div>
 
+        {/* 약관 동의 체크박스 - 전화번호 입력 단계에서만 표시 */}
+        {step === "phone" && (
+          <div className="mb-3 space-y-1.5">
+            {/* 전체 동의 */}
+            <div className="flex items-center justify-between pb-1.5 border-b border-gray-200">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newValue = !(termsAgreed && privacyCollectionAgreed && privacyThirdPartyAgreed && marketingAgreed);
+                    setTermsAgreed(newValue);
+                    setPrivacyCollectionAgreed(newValue);
+                    setPrivacyThirdPartyAgreed(newValue);
+                    setMarketingAgreed(newValue);
+                  }}
+                  className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                    termsAgreed && privacyCollectionAgreed && privacyThirdPartyAgreed && marketingAgreed
+                      ? "bg-[#ff6600] border-[#ff6600]"
+                      : "border-gray-300 bg-white"
+                  }`}
+                >
+                  {termsAgreed && privacyCollectionAgreed && privacyThirdPartyAgreed && marketingAgreed && (
+                    <Check className="w-3 h-3 text-white" />
+                  )}
+                </button>
+                <span className="text-sm font-medium text-gray-700">전체 동의</span>
+              </label>
+            </div>
+
+            {/* 득템딜 이용약관 (필수) */}
+            <div className="flex items-center justify-between pl-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <button
+                  type="button"
+                  onClick={() => setTermsAgreed(!termsAgreed)}
+                  className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                    termsAgreed
+                      ? "bg-[#ff6600] border-[#ff6600]"
+                      : "border-gray-300 bg-white"
+                  }`}
+                >
+                  {termsAgreed && <Check className="w-2.5 h-2.5 text-white" />}
+                </button>
+                <span className="text-xs text-gray-500">(필수) 득템딜 이용약관 동의</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(true)}
+                className="text-xs text-gray-400 underline"
+              >
+                보기
+              </button>
+            </div>
+
+            {/* 개인정보 수집∙이용 동의 (필수) */}
+            <div className="flex items-center justify-between pl-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <button
+                  type="button"
+                  onClick={() => setPrivacyCollectionAgreed(!privacyCollectionAgreed)}
+                  className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                    privacyCollectionAgreed
+                      ? "bg-[#ff6600] border-[#ff6600]"
+                      : "border-gray-300 bg-white"
+                  }`}
+                >
+                  {privacyCollectionAgreed && <Check className="w-2.5 h-2.5 text-white" />}
+                </button>
+                <span className="text-xs text-gray-500">(필수) 개인정보 수집∙이용 동의</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowPrivacyCollectionModal(true)}
+                className="text-xs text-gray-400 underline"
+              >
+                보기
+              </button>
+            </div>
+
+            {/* 개인정보 제3자 제공 동의 (필수) */}
+            <div className="flex items-center justify-between pl-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <button
+                  type="button"
+                  onClick={() => setPrivacyThirdPartyAgreed(!privacyThirdPartyAgreed)}
+                  className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                    privacyThirdPartyAgreed
+                      ? "bg-[#ff6600] border-[#ff6600]"
+                      : "border-gray-300 bg-white"
+                  }`}
+                >
+                  {privacyThirdPartyAgreed && <Check className="w-2.5 h-2.5 text-white" />}
+                </button>
+                <span className="text-xs text-gray-500">(필수) 개인정보 제3자 제공 동의</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowPrivacyThirdPartyModal(true)}
+                className="text-xs text-gray-400 underline"
+              >
+                보기
+              </button>
+            </div>
+
+            {/* 마케팅 정보 수신 동의 (선택) */}
+            <div className="flex items-center justify-between pl-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <button
+                  type="button"
+                  onClick={() => setMarketingAgreed(!marketingAgreed)}
+                  className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                    marketingAgreed
+                      ? "bg-[#ff6600] border-[#ff6600]"
+                      : "border-gray-300 bg-white"
+                  }`}
+                >
+                  {marketingAgreed && <Check className="w-2.5 h-2.5 text-white" />}
+                </button>
+                <span className="text-xs text-gray-500">(선택) 마케팅 정보 수신 동의</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowMarketingModal(true)}
+                className="text-xs text-gray-400 underline"
+              >
+                보기
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* 버튼 */}
         {step === "phone" ? (
           <button
-            disabled={!isPhoneComplete || isLoading}
+            disabled={!isPhoneComplete || !allRequiredTermsAgreed || isLoading}
             onClick={handleSendCode}
             className={`w-full py-4 rounded-xl text-lg font-semibold transition-all duration-300 ${
-              isPhoneComplete ? "shadow-lg" : ""
+              isPhoneComplete && allRequiredTermsAgreed ? "shadow-lg" : ""
             }`}
             style={{
-              backgroundColor: isPhoneComplete ? "#ff6600" : "#e5e7eb",
-              color: isPhoneComplete ? "#fff" : "#9ca3af",
+              backgroundColor: isPhoneComplete && allRequiredTermsAgreed ? "#ff6600" : "#e5e7eb",
+              color: isPhoneComplete && allRequiredTermsAgreed ? "#fff" : "#9ca3af",
             }}
           >
             {isLoading ? "발송 중..." : "인증번호 받기"}
@@ -327,6 +476,32 @@ export default function PhoneVerificationModal({
           </button>
         )}
       </div>
+
+      {/* 약관 모달 */}
+      <TermsModal
+        isOpen={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+        onAgree={() => setTermsAgreed(true)}
+        type="terms_of_service"
+      />
+      <TermsModal
+        isOpen={showPrivacyCollectionModal}
+        onClose={() => setShowPrivacyCollectionModal(false)}
+        onAgree={() => setPrivacyCollectionAgreed(true)}
+        type="privacy_collection"
+      />
+      <TermsModal
+        isOpen={showPrivacyThirdPartyModal}
+        onClose={() => setShowPrivacyThirdPartyModal(false)}
+        onAgree={() => setPrivacyThirdPartyAgreed(true)}
+        type="privacy_third_party"
+      />
+      <TermsModal
+        isOpen={showMarketingModal}
+        onClose={() => setShowMarketingModal(false)}
+        onAgree={() => setMarketingAgreed(true)}
+        type="marketing"
+      />
     </div>
   );
 }
