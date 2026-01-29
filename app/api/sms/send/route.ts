@@ -5,13 +5,6 @@ import { generateCode, saveCode, validatePhoneNumber, formatPhoneNumber } from "
 // Node.js 런타임 사용 (Edge에서 crypto 모듈 문제 방지)
 export const runtime = "nodejs";
 
-// 테스트용 전화번호 (SMS 발송 없이 고정 코드 000000 사용)
-const TEST_PHONE_NUMBERS = [
-  "01000000000",
-  "01012345678",
-  "01011111111",
-];
-
 // Solapi API 직접 호출을 위한 인증 헤더 생성
 function generateSolapiAuth() {
   const apiKey = (process.env.SOLAPI_API_KEY || "").trim();
@@ -46,17 +39,6 @@ export async function POST(request: Request) {
     }
 
     const normalizedPhone = phoneNumber.replace(/-/g, "");
-
-    // 테스트 번호인 경우: SMS 발송 없이 고정 코드 사용
-    if (TEST_PHONE_NUMBERS.includes(normalizedPhone)) {
-      const testCode = "000000";
-      saveCode(phoneNumber, testCode);
-      console.log(`[TEST MODE] 테스트 번호 ${formatPhoneNumber(phoneNumber)} - 인증코드: ${testCode}`);
-      return NextResponse.json({
-        success: true,
-        message: "인증번호가 발송되었습니다.",
-      });
-    }
 
     // 인증 코드 생성 및 저장
     const code = generateCode();

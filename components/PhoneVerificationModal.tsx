@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ChevronLeft, Delete, Check } from "lucide-react";
 import TermsModal from "./TermsModal";
 
@@ -31,6 +31,9 @@ export default function PhoneVerificationModal({
   const [showPrivacyCollectionModal, setShowPrivacyCollectionModal] = useState(false);
   const [showPrivacyThirdPartyModal, setShowPrivacyThirdPartyModal] = useState(false);
   const [showMarketingModal, setShowMarketingModal] = useState(false);
+
+  // 붙여넣기를 위한 숨겨진 input ref
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
 
   // 타이머 관리
   useEffect(() => {
@@ -189,6 +192,24 @@ export default function PhoneVerificationModal({
   const isPhoneComplete = phone.replace(/\D/g, "").length === 8;
   const isCodeComplete = code.length === 6;
 
+  // 붙여넣기 처리
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData("text");
+    const numbers = pastedText.replace(/\D/g, "").slice(0, 6);
+    if (numbers.length > 0) {
+      setCode(numbers);
+      if (numbers.length === 6) {
+        handleVerifyCode(numbers);
+      }
+    }
+  };
+
+  // 인증번호 영역 클릭 시 숨겨진 input에 포커스
+  const handleCodeAreaClick = () => {
+    hiddenInputRef.current?.focus();
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -255,8 +276,9 @@ export default function PhoneVerificationModal({
             {/* 인증번호 표시 */}
             <div className="mb-4">
               <div
-                className="flex justify-center gap-3 py-4 border-b-2 transition-colors"
+                className="flex justify-center gap-3 py-4 border-b-2 transition-colors cursor-pointer"
                 style={{ borderColor: code ? "#ff6600" : "#e5e7eb" }}
+                onClick={handleCodeAreaClick}
               >
                 {[0, 1, 2, 3, 4, 5].map((i) => (
                   <span
@@ -268,6 +290,19 @@ export default function PhoneVerificationModal({
                   </span>
                 ))}
               </div>
+              {/* 붙여넣기를 위한 숨겨진 input */}
+              <input
+                ref={hiddenInputRef}
+                type="text"
+                inputMode="numeric"
+                className="opacity-0 absolute -z-10 h-0 w-0"
+                onPaste={handlePaste}
+                value=""
+                onChange={() => {}}
+              />
+              <p className="text-xs text-gray-400 text-center mt-2">
+                인증번호를 붙여넣으려면 위 영역을 길게 누르세요
+              </p>
             </div>
 
             {/* 에러 메시지 */}
@@ -319,16 +354,17 @@ export default function PhoneVerificationModal({
           <div className="mb-3 space-y-1.5">
             {/* 전체 동의 */}
             <div className="flex items-center justify-between pb-1.5 border-b border-gray-200">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newValue = !(termsAgreed && privacyCollectionAgreed && privacyThirdPartyAgreed && marketingAgreed);
-                    setTermsAgreed(newValue);
-                    setPrivacyCollectionAgreed(newValue);
-                    setPrivacyThirdPartyAgreed(newValue);
-                    setMarketingAgreed(newValue);
-                  }}
+              <div
+                className="flex items-center gap-2 cursor-pointer"
+                onClick={() => {
+                  const newValue = !(termsAgreed && privacyCollectionAgreed && privacyThirdPartyAgreed && marketingAgreed);
+                  setTermsAgreed(newValue);
+                  setPrivacyCollectionAgreed(newValue);
+                  setPrivacyThirdPartyAgreed(newValue);
+                  setMarketingAgreed(newValue);
+                }}
+              >
+                <div
                   className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
                     termsAgreed && privacyCollectionAgreed && privacyThirdPartyAgreed && marketingAgreed
                       ? "bg-[#ff6600] border-[#ff6600]"
@@ -338,17 +374,18 @@ export default function PhoneVerificationModal({
                   {termsAgreed && privacyCollectionAgreed && privacyThirdPartyAgreed && marketingAgreed && (
                     <Check className="w-3 h-3 text-white" />
                   )}
-                </button>
+                </div>
                 <span className="text-sm font-medium text-gray-700">전체 동의</span>
-              </label>
+              </div>
             </div>
 
             {/* 득템딜 이용약관 (필수) */}
             <div className="flex items-center justify-between pl-1">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <button
-                  type="button"
-                  onClick={() => setTermsAgreed(!termsAgreed)}
+              <div
+                className="flex items-center gap-2 cursor-pointer"
+                onClick={() => setTermsAgreed(!termsAgreed)}
+              >
+                <div
                   className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
                     termsAgreed
                       ? "bg-[#ff6600] border-[#ff6600]"
@@ -356,9 +393,9 @@ export default function PhoneVerificationModal({
                   }`}
                 >
                   {termsAgreed && <Check className="w-2.5 h-2.5 text-white" />}
-                </button>
+                </div>
                 <span className="text-xs text-gray-500">(필수) 득템딜 이용약관 동의</span>
-              </label>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowTermsModal(true)}
@@ -370,10 +407,11 @@ export default function PhoneVerificationModal({
 
             {/* 개인정보 수집∙이용 동의 (필수) */}
             <div className="flex items-center justify-between pl-1">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <button
-                  type="button"
-                  onClick={() => setPrivacyCollectionAgreed(!privacyCollectionAgreed)}
+              <div
+                className="flex items-center gap-2 cursor-pointer"
+                onClick={() => setPrivacyCollectionAgreed(!privacyCollectionAgreed)}
+              >
+                <div
                   className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
                     privacyCollectionAgreed
                       ? "bg-[#ff6600] border-[#ff6600]"
@@ -381,9 +419,9 @@ export default function PhoneVerificationModal({
                   }`}
                 >
                   {privacyCollectionAgreed && <Check className="w-2.5 h-2.5 text-white" />}
-                </button>
+                </div>
                 <span className="text-xs text-gray-500">(필수) 개인정보 수집∙이용 동의</span>
-              </label>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowPrivacyCollectionModal(true)}
@@ -395,10 +433,11 @@ export default function PhoneVerificationModal({
 
             {/* 개인정보 제3자 제공 동의 (필수) */}
             <div className="flex items-center justify-between pl-1">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <button
-                  type="button"
-                  onClick={() => setPrivacyThirdPartyAgreed(!privacyThirdPartyAgreed)}
+              <div
+                className="flex items-center gap-2 cursor-pointer"
+                onClick={() => setPrivacyThirdPartyAgreed(!privacyThirdPartyAgreed)}
+              >
+                <div
                   className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
                     privacyThirdPartyAgreed
                       ? "bg-[#ff6600] border-[#ff6600]"
@@ -406,9 +445,9 @@ export default function PhoneVerificationModal({
                   }`}
                 >
                   {privacyThirdPartyAgreed && <Check className="w-2.5 h-2.5 text-white" />}
-                </button>
+                </div>
                 <span className="text-xs text-gray-500">(필수) 개인정보 제3자 제공 동의</span>
-              </label>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowPrivacyThirdPartyModal(true)}
@@ -420,10 +459,11 @@ export default function PhoneVerificationModal({
 
             {/* 마케팅 정보 수신 동의 (선택) */}
             <div className="flex items-center justify-between pl-1">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <button
-                  type="button"
-                  onClick={() => setMarketingAgreed(!marketingAgreed)}
+              <div
+                className="flex items-center gap-2 cursor-pointer"
+                onClick={() => setMarketingAgreed(!marketingAgreed)}
+              >
+                <div
                   className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
                     marketingAgreed
                       ? "bg-[#ff6600] border-[#ff6600]"
@@ -431,9 +471,9 @@ export default function PhoneVerificationModal({
                   }`}
                 >
                   {marketingAgreed && <Check className="w-2.5 h-2.5 text-white" />}
-                </button>
+                </div>
                 <span className="text-xs text-gray-500">(선택) 마케팅 정보 수신 동의</span>
-              </label>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowMarketingModal(true)}

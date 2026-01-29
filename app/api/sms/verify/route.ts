@@ -5,14 +5,6 @@ import * as crypto from "crypto";
 // Node.js 런타임 사용
 export const runtime = "nodejs";
 
-// 테스트용 전화번호 (고정 코드 000000)
-const TEST_PHONE_NUMBERS = [
-  "01000000000",
-  "01012345678",
-  "01011111111",
-];
-const TEST_CODE = "000000";
-
 // 간단한 토큰 생성 (JWT 대신 HMAC 사용)
 function generateVerificationToken(phoneNumber: string): string {
   const normalizedPhone = phoneNumber.replace(/-/g, "");
@@ -85,25 +77,14 @@ export async function POST(request: Request) {
 
     const normalizedPhone = phoneNumber.replace(/-/g, "");
 
-    // 테스트 번호인 경우: 고정 코드로 바로 검증
-    if (TEST_PHONE_NUMBERS.includes(normalizedPhone)) {
-      if (code !== TEST_CODE) {
-        return NextResponse.json(
-          { error: "인증번호가 일치하지 않습니다." },
-          { status: 400 }
-        );
-      }
-      console.log(`[TEST MODE] 테스트 번호 ${formatPhoneNumber(phoneNumber)} 인증 성공`);
-    } else {
-      // 일반 번호: 저장된 코드로 검증
-      const result = verifyCode(phoneNumber, code);
+    // 저장된 코드로 검증
+    const result = verifyCode(phoneNumber, code);
 
-      if (!result.success) {
-        return NextResponse.json(
-          { error: result.message },
-          { status: 400 }
-        );
-      }
+    if (!result.success) {
+      return NextResponse.json(
+        { error: result.message },
+        { status: 400 }
+      );
     }
 
     // 성공 시 토큰 발급
