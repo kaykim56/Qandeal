@@ -126,11 +126,11 @@ export async function getChallengeById(id: string): Promise<ChallengeWithMission
     return null;
   }
 
-  // 미션 스텝 조회
+  // 미션 스텝 조회 (challenge.id는 항상 UUID)
   const { data: steps, error: stepsError } = await supabase
     .from("mission_steps")
     .select("*")
-    .eq("challenge_id", id)
+    .eq("challenge_id", challenge.id)
     .order("step_order", { ascending: true });
 
   if (stepsError) {
@@ -141,7 +141,7 @@ export async function getChallengeById(id: string): Promise<ChallengeWithMission
   const challengeData = dbToChallenge(challenge, missionSteps);
 
   // 기존 Mission 형식도 유지 (하위 호환)
-  const missions = getDefaultMissions(id, missionSteps);
+  const missions = getDefaultMissions(challenge.id, missionSteps);
 
   return { ...challengeData, missions };
 }
