@@ -162,6 +162,7 @@ export default function VerifyUploadModal({
 
     const uploadedUrls: string[] = [];
     const startImageOrder = existingImages.length + 1;
+    const UPLOAD_TIMEOUT_MS = 30000; // 30초 타임아웃
 
     try {
       for (let i = 0; i < selectedImages.length; i++) {
@@ -181,10 +182,26 @@ export default function VerifyUploadModal({
         // 이미지 순서 (1, 2, 3)
         formData.append("imageOrder", String(startImageOrder + i));
 
-        const response = await fetch("/api/verify/upload", {
-          method: "POST",
-          body: formData,
-        });
+        // AbortController로 타임아웃 설정
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+
+        let response: Response;
+        try {
+          response = await fetch("/api/verify/upload", {
+            method: "POST",
+            body: formData,
+            signal: controller.signal,
+          });
+        } catch (fetchErr) {
+          clearTimeout(timeoutId);
+          if (fetchErr instanceof Error && fetchErr.name === "AbortError") {
+            throw new Error("업로드 시간이 초과되었습니다. 다시 시도해주세요.");
+          }
+          // 네트워크 오류
+          throw new Error("네트워크 연결을 확인해주세요.");
+        }
+        clearTimeout(timeoutId);
 
         const data = await response.json();
 
