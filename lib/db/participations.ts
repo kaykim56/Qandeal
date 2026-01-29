@@ -1,4 +1,4 @@
-import { createServiceRoleClient, createServerSupabaseClient } from "../supabase";
+import { createServiceRoleClient } from "../supabase";
 
 // =====================================================
 // 타입 정의
@@ -88,7 +88,7 @@ export async function getParticipation(
   challengeId: string,
   userId: string
 ): Promise<Participation | null> {
-  const supabase = createServerSupabaseClient();
+  const supabase = createServiceRoleClient();
 
   const { data, error } = await supabase
     .from("participations")
