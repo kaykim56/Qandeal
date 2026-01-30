@@ -14,13 +14,30 @@ const client = twilio(accountSid, authToken);
 export async function POST(request: Request) {
   // 🔍 디버깅: 요청 출처 추적
   const headers = Object.fromEntries(request.headers.entries());
+  const origin = headers["origin"];
+  const referer = headers["referer"];
+
   console.log("[SMS DEBUG] Request headers:", JSON.stringify({
     "user-agent": headers["user-agent"],
-    "referer": headers["referer"],
-    "origin": headers["origin"],
+    "referer": referer,
+    "origin": origin,
     "x-forwarded-for": headers["x-forwarded-for"],
     "x-real-ip": headers["x-real-ip"],
   }, null, 2));
+
+  // Origin/Referer 검증 - 허용된 도메인에서의 요청만 허용
+  const allowedDomains = ["qanda.ai", "vercel.app", "localhost"];
+  const isValidOrigin = allowedDomains.some(domain =>
+    origin?.includes(domain) || referer?.includes(domain)
+  );
+
+  if (!isValidOrigin) {
+    console.log("[SMS] Blocked: Invalid origin", { origin, referer });
+    return NextResponse.json(
+      { error: "Invalid request" },
+      { status: 403 }
+    );
+  }
 
   try {
     const { phoneNumber } = await request.json();

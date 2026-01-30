@@ -26,7 +26,7 @@ export async function checkRateLimit(phone: string): Promise<{ allowed: boolean;
     .single();
 
   if (existing) {
-    // expires_at이 5분 후이므로, (expires_at - 4분) 이후면 1분 내 발송된 것
+    // expires_at이 5분 후이므로, 레코드가 있으면 아직 5분 내에 발송된 것
     const expiresAt = new Date(existing.expires_at);
     const sentAt = new Date(expiresAt.getTime() - 5 * 60 * 1000); // 발송 시점 추정
     const now = new Date();
