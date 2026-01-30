@@ -14,6 +14,33 @@ export function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+// Rate limiting 체크 (1분 내 재발송 방지)
+export async function checkRateLimit(phone: string): Promise<{ allowed: boolean; waitSeconds?: number }> {
+  const supabase = getSupabaseAdmin();
+  const normalizedPhone = phone.replace(/-/g, "");
+
+  const { data: existing } = await supabase
+    .from("verification_codes")
+    .select("expires_at")
+    .eq("phone", normalizedPhone)
+    .single();
+
+  if (existing) {
+    // expires_at이 5분 후이므로, (expires_at - 4분) 이후면 1분 내 발송된 것
+    const expiresAt = new Date(existing.expires_at);
+    const sentAt = new Date(expiresAt.getTime() - 5 * 60 * 1000); // 발송 시점 추정
+    const now = new Date();
+    const diffSeconds = Math.floor((now.getTime() - sentAt.getTime()) / 1000);
+    const waitTime = 60; // 1분
+
+    if (diffSeconds < waitTime) {
+      return { allowed: false, waitSeconds: waitTime - diffSeconds };
+    }
+  }
+
+  return { allowed: true };
+}
+
 // 코드 저장 (5분 만료) - Supabase
 export async function saveCode(phone: string, code: string): Promise<void> {
   const supabase = getSupabaseAdmin();

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import twilio from "twilio";
-import { generateCode, saveCode, validatePhoneNumber, formatPhoneNumber } from "@/lib/verification-codes";
+import { generateCode, saveCode, validatePhoneNumber, formatPhoneNumber, checkRateLimit } from "@/lib/verification-codes";
 
 export const runtime = "nodejs";
 
@@ -31,6 +31,18 @@ export async function POST(request: Request) {
     }
 
     const normalizedPhone = phoneNumber.replace(/-/g, "");
+
+    // Rate limiting: 1분 내 재발송 방지
+    const rateLimitResult = await checkRateLimit(normalizedPhone);
+    if (!rateLimitResult.allowed) {
+      console.log(`[SMS] Rate limited: ${normalizedPhone}, wait ${rateLimitResult.waitSeconds}s`);
+      return NextResponse.json({
+        success: true,
+        message: "인증번호가 이미 발송되었습니다. 잠시 후 다시 시도해주세요.",
+        rateLimited: true,
+        waitSeconds: rateLimitResult.waitSeconds,
+      });
+    }
 
     // 인증 코드 생성 및 Supabase에 저장
     const code = generateCode();
