@@ -6,7 +6,9 @@ import { Info, Clock, Check, ChevronUp } from "lucide-react";
 import MissionSteps, { Step } from "./MissionSteps";
 import VerifyUploadModal from "./VerifyUploadModal";
 import PhoneVerificationModal from "./PhoneVerificationModal";
+import PhoneCheckModal from "./PhoneCheckModal";
 import Link from "next/link";
+import { Participation } from "@/lib/db/participations";
 import { MissionStep } from "@/lib/types";
 import { useQandaUser } from "./QandaUserProvider";
 import { trackEvent } from "./MixpanelProvider";
@@ -170,6 +172,11 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
   const [showFinalPriceTooltip, setShowFinalPriceTooltip] = useState(false);
   const [verifyBlockToast, setVerifyBlockToast] = useState<string | null>(null);
 
+  // 전화번호 확인 모달 (JWT userId 없는 경우)
+  const [showPhoneCheck, setShowPhoneCheck] = useState(false);
+  const [isBlurred, setIsBlurred] = useState(false);
+  const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
+
   // 툴팁 자동 닫기 (5초)
   useEffect(() => {
     if (showPaybackTooltip) {
@@ -268,6 +275,93 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
   if (typeof window !== "undefined" && !qandaUser?.userId && !localStorage.getItem("userId")) {
     localStorage.setItem("userId", userId);
   }
+
+  // JWT userId가 없고, 저장된 전화번호도 없으면 블러 + 모달 표시
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const savedPhone = localStorage.getItem("verifiedPhone");
+    if (savedPhone) {
+      setVerifiedPhone(savedPhone);
+    }
+
+    // JWT userId가 없고, 저장된 전화번호도 없으면 블러 처리
+    if (!qandaUser?.userId && !savedPhone) {
+      setIsBlurred(true);
+      setShowPhoneCheck(true);
+    }
+  }, [qandaUser]);
+
+  // 전화번호 확인 후 참여 상태 복원
+  const handlePhoneConfirmed = (phoneNumber: string, participation: Participation | null) => {
+    // 전화번호 저장
+    localStorage.setItem("verifiedPhone", phoneNumber);
+    setVerifiedPhone(phoneNumber);
+
+    // 블러 해제 및 모달 닫기
+    setIsBlurred(false);
+    setShowPhoneCheck(false);
+
+    if (participation) {
+      // 참여 상태 복원
+      setParticipationId(participation.id);
+      setHasParticipated(true);
+      setParticipationStatus(participation.status);
+
+      // 스텝 상태 복원
+      const newSteps: Step[] = missionSteps.map((ms) => {
+        const verifyResult = canVerifyStep(ms);
+        return {
+          title: ms.title.replace(/ /g, "\n"),
+          status: "pending" as const,
+          imageUrl: undefined,
+          imageUrls: [],
+          deadline: ms.deadline,
+          description: ms.description,
+          exampleImages: ms.exampleImages || [],
+          canVerify: verifyResult.canVerify,
+          verifyBlockReason: verifyResult.reason,
+        };
+      });
+
+      if (participation.images && participation.images.length > 0) {
+        const imagesByStep: { [key: number]: string[] } = {};
+        participation.images.forEach((img) => {
+          const stepIndex = img.stepOrder - 1;
+          if (!imagesByStep[stepIndex]) {
+            imagesByStep[stepIndex] = [];
+          }
+          imagesByStep[stepIndex].push(img.imageUrl);
+        });
+
+        Object.entries(imagesByStep).forEach(([stepIndexStr, urls]) => {
+          const stepIndex = parseInt(stepIndexStr, 10);
+          if (stepIndex >= 0 && stepIndex < newSteps.length) {
+            newSteps[stepIndex] = {
+              ...newSteps[stepIndex],
+              status: "completed",
+              imageUrl: urls[0],
+              imageUrls: urls,
+            };
+          }
+        });
+      } else {
+        if (participation.purchaseImageUrl) {
+          newSteps[0] = { ...newSteps[0], status: "completed", imageUrl: participation.purchaseImageUrl, imageUrls: [participation.purchaseImageUrl] };
+        }
+        if (participation.reviewImageUrl) {
+          newSteps[1] = { ...newSteps[1], status: "completed", imageUrl: participation.reviewImageUrl, imageUrls: [participation.reviewImageUrl] };
+        }
+      }
+      setSteps(newSteps);
+
+      if (participation.status === "approved") {
+        setPaybackStatus("paying");
+      } else if (newSteps.every((s) => s.status === "completed")) {
+        setPaybackStatus("reviewing");
+      }
+    }
+  };
 
   // 기존 참여 정보 불러오기
   useEffect(() => {
@@ -538,6 +632,8 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
 
   return (
     <>
+      {/* 블러 처리 래퍼 */}
+      <div className={isBlurred ? "blur-sm pointer-events-none select-none" : ""}>
       {/* 제품 정보 카드 */}
       <section className="bg-white px-4 py-5 border-b border-gray-100">
         {/* 플랫폼 태그 */}
@@ -887,9 +983,11 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
           </button>
         </div>
       )}
+      </div>
+      {/* 블러 래퍼 끝 */}
 
       {/* 하단 고정 CTA */}
-      <footer className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-gray-200 px-4 py-3 z-20">
+      <footer className={`fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-gray-200 px-4 py-3 z-20 ${isBlurred ? "blur-sm pointer-events-none" : ""}`}>
         <div className="flex items-center gap-2 mb-3">
           <span className="text-lg">🎉</span>
           <p className="text-sm text-gray-700">
@@ -1023,6 +1121,16 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
         onVerified={handlePhoneVerified}
         challengeId={challenge.id}
         challengeTitle={challenge.title}
+      />
+
+      <PhoneCheckModal
+        isOpen={showPhoneCheck}
+        onClose={() => {
+          setShowPhoneCheck(false);
+          setIsBlurred(false);
+        }}
+        onPhoneConfirmed={handlePhoneConfirmed}
+        challengeId={challenge.id}
       />
     </>
   );

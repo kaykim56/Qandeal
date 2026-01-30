@@ -1,17 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createParticipation, getParticipation, deleteParticipation } from "@/lib/db/participations";
+import { createParticipation, getParticipation, getParticipationByPhone, deleteParticipation } from "@/lib/db/participations";
 import { verifyToken } from "@/app/api/sms/verify/route";
 
-// GET /api/participations?challengeId=xxx&userId=xxx - 참여 정보 조회
+// GET /api/participations?challengeId=xxx&userId=xxx 또는
+// GET /api/participations?challengeId=xxx&phoneNumber=xxx - 참여 정보 조회
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const challengeId = searchParams.get("challengeId");
     const userId = searchParams.get("userId");
+    const phoneNumber = searchParams.get("phoneNumber");
 
-    if (!challengeId || !userId) {
+    if (!challengeId) {
       return NextResponse.json(
-        { error: "challengeId와 userId가 필요합니다" },
+        { error: "challengeId가 필요합니다" },
+        { status: 400 }
+      );
+    }
+
+    // phoneNumber가 있으면 전화번호로 조회
+    if (phoneNumber) {
+      const participation = await getParticipationByPhone(challengeId, phoneNumber);
+      return NextResponse.json({ participation: participation || null });
+    }
+
+    // userId로 조회
+    if (!userId) {
+      return NextResponse.json(
+        { error: "userId 또는 phoneNumber가 필요합니다" },
         { status: 400 }
       );
     }

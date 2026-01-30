@@ -113,6 +113,38 @@ export async function getParticipation(
   return dbToParticipation(data, images);
 }
 
+export async function getParticipationByPhone(
+  challengeId: string,
+  phoneNumber: string
+): Promise<Participation | null> {
+  const supabase = createServiceRoleClient();
+
+  // 전화번호 정규화 (하이픈 제거)
+  const normalizedPhone = phoneNumber.replace(/-/g, "");
+
+  const { data, error } = await supabase
+    .from("participations")
+    .select(`
+      *,
+      participation_images (step_order, image_order, image_url)
+    `)
+    .eq("challenge_id", challengeId)
+    .eq("phone_number", normalizedPhone)
+    .single();
+
+  if (error || !data) {
+    if (error?.code !== "PGRST116") {
+      // PGRST116 = no rows returned
+      console.error("Failed to fetch participation by phone:", error);
+    }
+    return null;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const images = data.participation_images as any as Array<{ step_order: number; image_order?: number; image_url: string }> | undefined;
+  return dbToParticipation(data, images);
+}
+
 export async function createParticipation(data: {
   challengeId: string;
   userId: string;
