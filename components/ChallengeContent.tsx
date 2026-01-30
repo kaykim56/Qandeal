@@ -45,6 +45,43 @@ function formatDeadline(dateString: string): string {
   }
 }
 
+// 스텝별 인증 가능 여부 판단 함수
+interface CanVerifyResult {
+  canVerify: boolean;
+  reason?: string;
+}
+
+function canVerifyStep(step: { title: string; deadline?: string }): CanVerifyResult {
+  if (!step.deadline) {
+    return { canVerify: true };
+  }
+
+  const now = new Date();
+  const deadline = new Date(step.deadline);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const deadlineDate = new Date(deadline.getFullYear(), deadline.getMonth(), deadline.getDate());
+
+  // 리뷰 인증인지 확인 (title에 "리뷰" 포함)
+  const isReviewStep = step.title.includes("리뷰");
+
+  if (isReviewStep) {
+    // 리뷰: deadline 날짜까지 가능
+    if (today > deadlineDate) {
+      return { canVerify: false, reason: "인증 기한이 지났습니다" };
+    }
+  } else {
+    // 일반 스텝 (구매 인증 등): 당일에만 가능
+    if (today < deadlineDate) {
+      return { canVerify: false, reason: `${formatDeadline(step.deadline)} 당일에 인증 가능합니다` };
+    }
+    if (today > deadlineDate) {
+      return { canVerify: false, reason: "인증 기한이 지났습니다" };
+    }
+  }
+
+  return { canVerify: true };
+}
+
 // 번호 목록을 파싱하여 렌더링하는 컴포넌트
 function FormattedDescription({ text }: { text: string }) {
   const lines = text.split("\n");
@@ -131,6 +168,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showPaybackTooltip, setShowPaybackTooltip] = useState(false);
   const [showFinalPriceTooltip, setShowFinalPriceTooltip] = useState(false);
+  const [verifyBlockToast, setVerifyBlockToast] = useState<string | null>(null);
 
   // 툴팁 자동 닫기 (5초)
   useEffect(() => {
@@ -146,6 +184,14 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
       return () => clearTimeout(timer);
     }
   }, [showFinalPriceTooltip]);
+
+  // 인증 불가 토스트 자동 닫기 (5초)
+  useEffect(() => {
+    if (verifyBlockToast) {
+      const timer = setTimeout(() => setVerifyBlockToast(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [verifyBlockToast]);
 
   // 스크롤 위치 감지
   useEffect(() => {
@@ -183,15 +229,20 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
 
   // UI용 스텝 상태
   const [steps, setSteps] = useState<Step[]>(
-    missionSteps.map((ms) => ({
-      title: ms.title.replace(/ /g, "\n"), // 공백을 줄바꿈으로
-      status: "pending" as const,
-      imageUrl: undefined,
-      imageUrls: [],
-      deadline: ms.deadline,
-      description: ms.description,
-      exampleImages: ms.exampleImages || [],
-    }))
+    missionSteps.map((ms) => {
+      const verifyResult = canVerifyStep(ms);
+      return {
+        title: ms.title.replace(/ /g, "\n"), // 공백을 줄바꿈으로
+        status: "pending" as const,
+        imageUrl: undefined,
+        imageUrls: [],
+        deadline: ms.deadline,
+        description: ms.description,
+        exampleImages: ms.exampleImages || [],
+        canVerify: verifyResult.canVerify,
+        verifyBlockReason: verifyResult.reason,
+      };
+    })
   );
   const [paybackStatus, setPaybackStatus] = useState<"pending" | "reviewing" | "paying" | "completed">("pending");
   const [participationStatus, setParticipationStatus] = useState<"pending" | "approved" | "rejected">("pending");
@@ -234,7 +285,21 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
           setParticipationStatus(p.status);
 
           // 스텝 상태 복원 (동적 스텝 지원 + 여러 이미지)
-          const newSteps = [...steps];
+          // missionSteps 기반으로 canVerify 계산 포함
+          const newSteps: Step[] = missionSteps.map((ms) => {
+            const verifyResult = canVerifyStep(ms);
+            return {
+              title: ms.title.replace(/ /g, "\n"),
+              status: "pending" as const,
+              imageUrl: undefined,
+              imageUrls: [],
+              deadline: ms.deadline,
+              description: ms.description,
+              exampleImages: ms.exampleImages || [],
+              canVerify: verifyResult.canVerify,
+              verifyBlockReason: verifyResult.reason,
+            };
+          });
 
           // 새로운 images 배열이 있으면 사용, 없으면 기존 방식
           if (p.images && p.images.length > 0) {
@@ -438,15 +503,20 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
         setHasParticipated(false);
         setParticipationId(null);
         setSteps(
-          missionSteps.map((ms) => ({
-            title: ms.title.replace(/ /g, "\n"),
-            status: "pending" as const,
-            imageUrl: undefined,
-            imageUrls: [],
-            deadline: ms.deadline,
-            description: ms.description,
-            exampleImages: ms.exampleImages || [],
-          }))
+          missionSteps.map((ms) => {
+            const verifyResult = canVerifyStep(ms);
+            return {
+              title: ms.title.replace(/ /g, "\n"),
+              status: "pending" as const,
+              imageUrl: undefined,
+              imageUrls: [],
+              deadline: ms.deadline,
+              description: ms.description,
+              exampleImages: ms.exampleImages || [],
+              canVerify: verifyResult.canVerify,
+              verifyBlockReason: verifyResult.reason,
+            };
+          })
         );
         setPaybackStatus("pending");
         setParticipationStatus("pending");
@@ -522,6 +592,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
             paybackAmount={challenge.paybackAmount}
             paybackStatus={paybackStatus}
             onVerify={handleVerify}
+            onVerifyBlocked={(reason) => setVerifyBlockToast(reason)}
             canReplace={canReplace}
             noticeText={getNoticeText()}
           />
@@ -866,6 +937,15 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
           )}
         </div>
       </footer>
+
+      {/* 인증 불가 토스트 */}
+      {verifyBlockToast && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 animate-fade-in">
+          <div className="bg-gray-800 text-white px-5 py-3 rounded-xl shadow-lg text-sm font-medium">
+            {verifyBlockToast}
+          </div>
+        </div>
+      )}
 
       {/* 신청 완료 팝업 */}
       {showSuccessToast && (

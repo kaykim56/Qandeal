@@ -11,6 +11,8 @@ export interface Step {
   deadline?: string; // 스텝 기한
   description?: string; // 스텝 설명
   exampleImages?: string[]; // 예시 이미지들 (여러 개 가능)
+  canVerify?: boolean; // 인증 가능 여부
+  verifyBlockReason?: string; // 인증 불가 사유
 }
 
 interface MissionStepsProps {
@@ -18,6 +20,7 @@ interface MissionStepsProps {
   paybackAmount: number;
   paybackStatus: "pending" | "reviewing" | "paying" | "completed";
   onVerify: (stepIndex: number) => void;
+  onVerifyBlocked?: (reason: string) => void; // 인증 불가 시 호출
   canReplace?: boolean; // 교체 가능 여부 (승인 전 + 기한 내)
   noticeText?: string;
 }
@@ -27,6 +30,7 @@ export default function MissionSteps({
   paybackAmount,
   paybackStatus = "pending",
   onVerify,
+  onVerifyBlocked,
   canReplace = true,
   noticeText = "제품 구매 시간을 지켜야 성공으로 처리돼요!",
 }: MissionStepsProps) {
@@ -183,14 +187,31 @@ export default function MissionSteps({
                     )}
                   </button>
                 ) : isCurrentStep ? (
-                  <button
-                    onClick={() => onVerify(index)}
-                    className="px-3 py-1.5 rounded-full text-xs font-medium text-white flex items-center gap-1 hover:opacity-90 transition-opacity"
-                    style={{ backgroundColor: "#ff6600" }}
-                  >
-                    <Camera className="w-3.5 h-3.5" />
-                    인증하기
-                  </button>
+                  step.canVerify === false ? (
+                    // 인증 불가 - 비활성화 스타일
+                    <button
+                      onClick={() => {
+                        if (step.verifyBlockReason && onVerifyBlocked) {
+                          onVerifyBlocked(step.verifyBlockReason);
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-full text-xs font-medium text-gray-400 flex items-center gap-1 cursor-not-allowed"
+                      style={{ backgroundColor: "#e5e7eb" }}
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      인증하기
+                    </button>
+                  ) : (
+                    // 인증 가능 - 활성화 스타일
+                    <button
+                      onClick={() => onVerify(index)}
+                      className="px-3 py-1.5 rounded-full text-xs font-medium text-white flex items-center gap-1 hover:opacity-90 transition-opacity"
+                      style={{ backgroundColor: "#ff6600" }}
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      인증하기
+                    </button>
+                  )
                 ) : (
                   <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-400">
                     대기
