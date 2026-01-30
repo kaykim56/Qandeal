@@ -6,6 +6,9 @@ import { useQandaUser } from "./QandaUserProvider";
 
 const MixpanelContext = createContext<typeof mixpanel | null>(null);
 
+// 전역 초기화 상태 추적
+let isMixpanelInitialized = false;
+
 export function MixpanelProvider({ children }: { children: ReactNode }) {
   const { user } = useQandaUser();
   const initialized = useRef(false);
@@ -26,6 +29,7 @@ export function MixpanelProvider({ children }: { children: ReactNode }) {
     });
 
     initialized.current = true;
+    isMixpanelInitialized = true;
   }, []);
 
   // 유저 ID로 초기 identify
@@ -57,7 +61,7 @@ const COMMON_PROPERTIES = {
 
 // 이벤트 트래킹 헬퍼
 export function trackEvent(eventName: string, properties?: Record<string, unknown>) {
-  if (typeof window !== "undefined") {
+  if (typeof window !== "undefined" && isMixpanelInitialized) {
     mixpanel.track(eventName, {
       ...COMMON_PROPERTIES,
       ...properties,
@@ -67,6 +71,8 @@ export function trackEvent(eventName: string, properties?: Record<string, unknow
 
 // 전화번호 인증 후 identify 변경
 export function identifyByPhone(phoneNumber: string, qandaUserId?: string) {
+  if (!isMixpanelInitialized) return;
+
   mixpanel.identify(phoneNumber);
   mixpanel.people.set({
     $phone: phoneNumber,
