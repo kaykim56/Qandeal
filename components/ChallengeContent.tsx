@@ -276,14 +276,33 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
     localStorage.setItem("userId", userId);
   }
 
-  // JWT userId가 없으면 항상 블러 + 모달 표시 (매번 전화번호 확인)
+  // JWT userId가 없으면 전화번호 확인 필요
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (qandaUser?.userId) return; // JWT userId 있으면 확인 불필요
 
-    // JWT userId가 없으면 항상 블러 처리 + 전화번호 확인 모달
-    if (!qandaUser?.userId) {
+    const isQandaWebView = /QANDA|Mathpresso/i.test(navigator.userAgent);
+    const isKakaoWebView = /KAKAOTALK/i.test(navigator.userAgent);
+
+    if (isQandaWebView) {
+      // 콴다 앱 웹뷰 - 바로 전화번호 확인
       setIsBlurred(true);
       setShowPhoneCheck(true);
+    } else if (isKakaoWebView) {
+      // 카카오톡 웹뷰 - 딥링크 시도 후 전화번호 확인 (딥링크 실패 시에만)
+      // 딥링크가 성공하면 페이지가 콴다 앱으로 넘어가서 이 콜백이 실행 안 됨
+      const timer = setTimeout(() => {
+        setIsBlurred(true);
+        setShowPhoneCheck(true);
+      }, 1500);
+      return () => clearTimeout(timer);
+    } else {
+      // 기타 브라우저 - 딥링크 시도 후 전화번호 확인
+      const timer = setTimeout(() => {
+        setIsBlurred(true);
+        setShowPhoneCheck(true);
+      }, 1000);
+      return () => clearTimeout(timer);
     }
   }, [qandaUser]);
 
