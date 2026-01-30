@@ -522,7 +522,6 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
             paybackAmount={challenge.paybackAmount}
             paybackStatus={paybackStatus}
             onVerify={handleVerify}
-            onDeleteImage={handleDeleteImage}
             canReplace={canReplace}
             noticeText={getNoticeText()}
           />
