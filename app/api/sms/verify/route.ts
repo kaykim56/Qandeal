@@ -77,8 +77,8 @@ export async function POST(request: Request) {
 
     const normalizedPhone = phoneNumber.replace(/-/g, "");
 
-    // 저장된 코드로 검증
-    const result = verifyCode(phoneNumber, code);
+    // 저장된 코드로 검증 (Supabase)
+    const result = await verifyCode(phoneNumber, code);
 
     if (!result.success) {
       return NextResponse.json(

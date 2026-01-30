@@ -91,5 +91,23 @@ Supabase DB에는 실제 사용자 데이터가 저장되어 있습니다.
 
 ## 배포
 
-- Vercel에 자동 배포됨
-- `git push origin main` 후 `vercel --prod` 로 프로덕션 배포
+### 🚨 배포 규칙 (필수)
+
+**배포할 때는 반드시 커밋/푸시를 먼저 해야 합니다!**
+
+1. 코드 변경
+2. `git add` + `git commit`
+3. `git push origin main`
+4. 그 다음 `vercel --prod`
+
+**절대로 `vercel --prod`만 단독 실행하지 마세요!** Git에 기록되지 않은 코드가 배포되면 나중에 복구가 불가능합니다.
+
+### 배포 명령어
+
+```bash
+# 올바른 배포 순서
+git add .
+git commit -m "feat: 변경 내용"
+git push origin main
+vercel --prod
+```

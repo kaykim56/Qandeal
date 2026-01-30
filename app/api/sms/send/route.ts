@@ -1,23 +1,15 @@
 import { NextResponse } from "next/server";
-import * as crypto from "crypto";
+import twilio from "twilio";
 import { generateCode, saveCode, validatePhoneNumber, formatPhoneNumber } from "@/lib/verification-codes";
 
-// Node.js 런타임 사용 (Edge에서 crypto 모듈 문제 방지)
 export const runtime = "nodejs";
 
-// Solapi API 직접 호출을 위한 인증 헤더 생성
-function generateSolapiAuth() {
-  const apiKey = (process.env.SOLAPI_API_KEY || "").trim();
-  const apiSecret = (process.env.SOLAPI_API_SECRET || "").trim();
-  const date = new Date().toISOString();
-  const salt = crypto.randomBytes(16).toString("hex");
-  const signature = crypto
-    .createHmac("sha256", apiSecret)
-    .update(date + salt)
-    .digest("hex");
+// Twilio 클라이언트 설정
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
 
-  return `HMAC-SHA256 apiKey=${apiKey}, date=${date}, salt=${salt}, signature=${signature}`;
-}
+const client = twilio(accountSid, authToken);
 
 export async function POST(request: Request) {
   try {
@@ -40,43 +32,26 @@ export async function POST(request: Request) {
 
     const normalizedPhone = phoneNumber.replace(/-/g, "");
 
-    // 인증 코드 생성 및 저장
+    // 인증 코드 생성 및 Supabase에 저장
     const code = generateCode();
-    saveCode(phoneNumber, code);
+    await saveCode(phoneNumber, code);
 
-    // SMS 발송 (Solapi REST API 직접 호출)
-    const senderNumber = (process.env.SOLAPI_SENDER_NUMBER || "").trim().replace(/-/g, "");
-    console.log("[SMS] Sending from:", senderNumber, "to:", normalizedPhone);
+    // Twilio로 SMS 발송
+    console.log("[SMS] Sending to:", normalizedPhone);
 
     try {
-      const response = await fetch("https://api.solapi.com/messages/v4/send-many", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": generateSolapiAuth(),
-        },
-        body: JSON.stringify({
-          messages: [
-            {
-              to: normalizedPhone,
-              from: senderNumber,
-              text: `[콴다 득템 딜] 인증번호: ${code} 5분 내에 입력해주세요.`,
-            },
-          ],
-        }),
+      const message = await client.messages.create({
+        body: `[콴다 득템 딜] 인증번호: ${code} 5분 내에 입력해주세요.`,
+        from: twilioPhoneNumber,
+        to: `+82${normalizedPhone.slice(1)}`, // 한국 국가 코드 추가, 앞의 0 제거
       });
 
-      const result = await response.json();
-      console.log("[SMS] API Response:", JSON.stringify(result));
+      console.log("[SMS] Message SID:", message.sid);
+    } catch (twilioError: unknown) {
+      const errorMessage = twilioError instanceof Error ? twilioError.message : JSON.stringify(twilioError);
+      console.error("Twilio 발송 오류:", errorMessage);
 
-      if (!response.ok) {
-        throw new Error(result.errorMessage || JSON.stringify(result));
-      }
-    } catch (solapiError: unknown) {
-      const errorMessage = solapiError instanceof Error ? solapiError.message : JSON.stringify(solapiError);
-      console.error("Solapi 발송 오류:", errorMessage, solapiError);
-
-      // 개발 환경에서는 콘솔에 코드 출력 (Solapi 설정 전 테스트용)
+      // 개발 환경에서는 콘솔에 코드 출력
       if (process.env.NODE_ENV === "development") {
         console.log(`[DEV] SMS 인증코드: ${code} (${formatPhoneNumber(phoneNumber)})`);
         return NextResponse.json({
