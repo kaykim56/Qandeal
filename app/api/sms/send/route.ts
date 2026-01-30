@@ -12,6 +12,15 @@ const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
 const client = twilio(accountSid, authToken);
 
 export async function POST(request: Request) {
+  // 🚨 긴급: SMS 발송 임시 중단 - 원인 파악 중
+  console.log("[SMS] BLOCKED - SMS sending temporarily disabled");
+  return NextResponse.json({
+    success: false,
+    error: "SMS 발송이 일시적으로 중단되었습니다. 잠시 후 다시 시도해주세요.",
+    blocked: true,
+  }, { status: 503 });
+
+  /* 원본 코드 - 원인 파악 후 복구
   try {
     const { phoneNumber } = await request.json();
 
@@ -90,4 +99,5 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+  원본 코드 끝 */
 }
