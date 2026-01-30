@@ -12,17 +12,20 @@ const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
 const client = twilio(accountSid, authToken);
 
 export async function POST(request: Request) {
-  // 🚨 긴급: SMS 발송 임시 중단 - 원인 파악 중
-  console.log("[SMS] BLOCKED - SMS sending temporarily disabled");
-  return NextResponse.json({
-    success: false,
-    error: "SMS 발송이 일시적으로 중단되었습니다. 잠시 후 다시 시도해주세요.",
-    blocked: true,
-  }, { status: 503 });
+  // 🔍 디버깅: 요청 출처 추적
+  const headers = Object.fromEntries(request.headers.entries());
+  console.log("[SMS DEBUG] Request headers:", JSON.stringify({
+    "user-agent": headers["user-agent"],
+    "referer": headers["referer"],
+    "origin": headers["origin"],
+    "x-forwarded-for": headers["x-forwarded-for"],
+    "x-real-ip": headers["x-real-ip"],
+  }, null, 2));
 
-  /* 원본 코드 - 원인 파악 후 복구
   try {
     const { phoneNumber } = await request.json();
+
+    console.log("[SMS DEBUG] Phone number requested:", phoneNumber);
 
     // 전화번호 검증
     if (!phoneNumber) {
@@ -99,5 +102,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-  원본 코드 끝 */
 }
