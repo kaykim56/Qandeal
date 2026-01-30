@@ -276,17 +276,12 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
     localStorage.setItem("userId", userId);
   }
 
-  // JWT userId가 없고, 저장된 전화번호도 없으면 블러 + 모달 표시
+  // JWT userId가 없으면 항상 블러 + 모달 표시 (매번 전화번호 확인)
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const savedPhone = localStorage.getItem("verifiedPhone");
-    if (savedPhone) {
-      setVerifiedPhone(savedPhone);
-    }
-
-    // JWT userId가 없고, 저장된 전화번호도 없으면 블러 처리
-    if (!qandaUser?.userId && !savedPhone) {
+    // JWT userId가 없으면 항상 블러 처리 + 전화번호 확인 모달
+    if (!qandaUser?.userId) {
       setIsBlurred(true);
       setShowPhoneCheck(true);
     }
@@ -356,8 +351,6 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
 
   // 전화번호 확인 후 참여 상태 복원 (PhoneCheckModal에서 호출)
   const handlePhoneConfirmed = (phoneNumber: string, participation: Participation | null) => {
-    // 전화번호 저장
-    localStorage.setItem("verifiedPhone", phoneNumber);
     setVerifiedPhone(phoneNumber);
 
     // 블러 해제 및 모달 닫기
@@ -369,11 +362,10 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
     }
   };
 
-  // 기존 참여 정보 불러오기
+  // 기존 참여 정보 불러오기 (userId로 조회)
   useEffect(() => {
     const fetchParticipation = async () => {
       try {
-        // 1. 먼저 userId로 조회
         const res = await fetch(
           `/api/participations?challengeId=${challenge.id}&userId=${userId}`
         );
@@ -381,20 +373,6 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
 
         if (data.participation) {
           restoreParticipationState(data.participation);
-          return;
-        }
-
-        // 2. userId로 못 찾으면 localStorage의 verifiedPhone으로 조회
-        const savedPhone = localStorage.getItem("verifiedPhone");
-        if (savedPhone) {
-          const phoneRes = await fetch(
-            `/api/participations?challengeId=${challenge.id}&phoneNumber=${savedPhone}`
-          );
-          const phoneData = await phoneRes.json();
-
-          if (phoneData.participation) {
-            restoreParticipationState(phoneData.participation);
-          }
         }
       } catch (error) {
         console.error("Failed to fetch participation:", error);

@@ -9,6 +9,7 @@ import { notFound } from "next/navigation";
 import ChallengeContent from "@/components/ChallengeContent";
 import ShareButton from "@/components/ShareButton";
 import BackButton from "@/components/BackButton";
+import DeepLinkRedirect from "@/components/DeepLinkRedirect";
 import type { Metadata } from "next";
 
 // QANDA 브랜드 색상
@@ -58,6 +59,9 @@ export default async function ChallengeDetailPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
+      {/* 콴다 앱 딥링크 리다이렉트 */}
+      <DeepLinkRedirect challengeId={challenge.id} />
+
       {/* 상단 헤더 */}
       <header className="sticky top-0 z-10 bg-white px-4 py-3 flex items-center justify-between border-b border-gray-100">
         <BackButton />
