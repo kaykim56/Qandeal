@@ -292,7 +292,69 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
     }
   }, [qandaUser]);
 
-  // 전화번호 확인 후 참여 상태 복원
+  // 참여 상태 복원 헬퍼 함수
+  const restoreParticipationState = (p: Participation) => {
+    setParticipationId(p.id);
+    setHasParticipated(true);
+    setParticipationStatus(p.status);
+
+    // 스텝 상태 복원 (동적 스텝 지원 + 여러 이미지)
+    const newSteps: Step[] = missionSteps.map((ms) => {
+      const verifyResult = canVerifyStep(ms);
+      return {
+        title: ms.title.replace(/ /g, "\n"),
+        status: "pending" as const,
+        imageUrl: undefined,
+        imageUrls: [],
+        deadline: ms.deadline,
+        description: ms.description,
+        exampleImages: ms.exampleImages || [],
+        canVerify: verifyResult.canVerify,
+        verifyBlockReason: verifyResult.reason,
+      };
+    });
+
+    // 새로운 images 배열이 있으면 사용, 없으면 기존 방식
+    if (p.images && p.images.length > 0) {
+      const imagesByStep: { [key: number]: string[] } = {};
+      p.images.forEach((img) => {
+        const stepIndex = img.stepOrder - 1;
+        if (!imagesByStep[stepIndex]) {
+          imagesByStep[stepIndex] = [];
+        }
+        imagesByStep[stepIndex].push(img.imageUrl);
+      });
+
+      Object.entries(imagesByStep).forEach(([stepIndexStr, urls]) => {
+        const stepIndex = parseInt(stepIndexStr, 10);
+        if (stepIndex >= 0 && stepIndex < newSteps.length) {
+          newSteps[stepIndex] = {
+            ...newSteps[stepIndex],
+            status: "completed",
+            imageUrl: urls[0],
+            imageUrls: urls,
+          };
+        }
+      });
+    } else {
+      if (p.purchaseImageUrl) {
+        newSteps[0] = { ...newSteps[0], status: "completed", imageUrl: p.purchaseImageUrl, imageUrls: [p.purchaseImageUrl] };
+      }
+      if (p.reviewImageUrl) {
+        newSteps[1] = { ...newSteps[1], status: "completed", imageUrl: p.reviewImageUrl, imageUrls: [p.reviewImageUrl] };
+      }
+    }
+    setSteps(newSteps);
+
+    // 페이백 상태 결정
+    if (p.status === "approved") {
+      setPaybackStatus("paying");
+    } else if (newSteps.every((s) => s.status === "completed")) {
+      setPaybackStatus("reviewing");
+    }
+  };
+
+  // 전화번호 확인 후 참여 상태 복원 (PhoneCheckModal에서 호출)
   const handlePhoneConfirmed = (phoneNumber: string, participation: Participation | null) => {
     // 전화번호 저장
     localStorage.setItem("verifiedPhone", phoneNumber);
@@ -303,63 +365,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
     setShowPhoneCheck(false);
 
     if (participation) {
-      // 참여 상태 복원
-      setParticipationId(participation.id);
-      setHasParticipated(true);
-      setParticipationStatus(participation.status);
-
-      // 스텝 상태 복원
-      const newSteps: Step[] = missionSteps.map((ms) => {
-        const verifyResult = canVerifyStep(ms);
-        return {
-          title: ms.title.replace(/ /g, "\n"),
-          status: "pending" as const,
-          imageUrl: undefined,
-          imageUrls: [],
-          deadline: ms.deadline,
-          description: ms.description,
-          exampleImages: ms.exampleImages || [],
-          canVerify: verifyResult.canVerify,
-          verifyBlockReason: verifyResult.reason,
-        };
-      });
-
-      if (participation.images && participation.images.length > 0) {
-        const imagesByStep: { [key: number]: string[] } = {};
-        participation.images.forEach((img) => {
-          const stepIndex = img.stepOrder - 1;
-          if (!imagesByStep[stepIndex]) {
-            imagesByStep[stepIndex] = [];
-          }
-          imagesByStep[stepIndex].push(img.imageUrl);
-        });
-
-        Object.entries(imagesByStep).forEach(([stepIndexStr, urls]) => {
-          const stepIndex = parseInt(stepIndexStr, 10);
-          if (stepIndex >= 0 && stepIndex < newSteps.length) {
-            newSteps[stepIndex] = {
-              ...newSteps[stepIndex],
-              status: "completed",
-              imageUrl: urls[0],
-              imageUrls: urls,
-            };
-          }
-        });
-      } else {
-        if (participation.purchaseImageUrl) {
-          newSteps[0] = { ...newSteps[0], status: "completed", imageUrl: participation.purchaseImageUrl, imageUrls: [participation.purchaseImageUrl] };
-        }
-        if (participation.reviewImageUrl) {
-          newSteps[1] = { ...newSteps[1], status: "completed", imageUrl: participation.reviewImageUrl, imageUrls: [participation.reviewImageUrl] };
-        }
-      }
-      setSteps(newSteps);
-
-      if (participation.status === "approved") {
-        setPaybackStatus("paying");
-      } else if (newSteps.every((s) => s.status === "completed")) {
-        setPaybackStatus("reviewing");
-      }
+      restoreParticipationState(participation);
     }
   };
 
@@ -367,76 +373,27 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
   useEffect(() => {
     const fetchParticipation = async () => {
       try {
+        // 1. 먼저 userId로 조회
         const res = await fetch(
           `/api/participations?challengeId=${challenge.id}&userId=${userId}`
         );
         const data = await res.json();
 
         if (data.participation) {
-          const p = data.participation;
-          setParticipationId(p.id);
-          setHasParticipated(true);
-          setParticipationStatus(p.status);
+          restoreParticipationState(data.participation);
+          return;
+        }
 
-          // 스텝 상태 복원 (동적 스텝 지원 + 여러 이미지)
-          // missionSteps 기반으로 canVerify 계산 포함
-          const newSteps: Step[] = missionSteps.map((ms) => {
-            const verifyResult = canVerifyStep(ms);
-            return {
-              title: ms.title.replace(/ /g, "\n"),
-              status: "pending" as const,
-              imageUrl: undefined,
-              imageUrls: [],
-              deadline: ms.deadline,
-              description: ms.description,
-              exampleImages: ms.exampleImages || [],
-              canVerify: verifyResult.canVerify,
-              verifyBlockReason: verifyResult.reason,
-            };
-          });
+        // 2. userId로 못 찾으면 localStorage의 verifiedPhone으로 조회
+        const savedPhone = localStorage.getItem("verifiedPhone");
+        if (savedPhone) {
+          const phoneRes = await fetch(
+            `/api/participations?challengeId=${challenge.id}&phoneNumber=${savedPhone}`
+          );
+          const phoneData = await phoneRes.json();
 
-          // 새로운 images 배열이 있으면 사용, 없으면 기존 방식
-          if (p.images && p.images.length > 0) {
-            // stepOrder별로 이미지 그룹화 (imageOrder로 정렬된 상태)
-            const imagesByStep: { [key: number]: string[] } = {};
-            p.images.forEach((img: { stepOrder: number; imageOrder: number; imageUrl: string }) => {
-              const stepIndex = img.stepOrder - 1;
-              if (!imagesByStep[stepIndex]) {
-                imagesByStep[stepIndex] = [];
-              }
-              // 이미지 순서대로 배열에 추가 (이미 DB에서 정렬되어 옴)
-              imagesByStep[stepIndex].push(img.imageUrl);
-            });
-
-            // 각 스텝에 이미지 배열 적용
-            Object.entries(imagesByStep).forEach(([stepIndexStr, urls]) => {
-              const stepIndex = parseInt(stepIndexStr, 10);
-              if (stepIndex >= 0 && stepIndex < newSteps.length) {
-                newSteps[stepIndex] = {
-                  ...newSteps[stepIndex],
-                  status: "completed",
-                  imageUrl: urls[0], // 하위 호환
-                  imageUrls: urls,
-                };
-              }
-            });
-          } else {
-            // 하위 호환: purchaseImageUrl, reviewImageUrl
-            if (p.purchaseImageUrl) {
-              newSteps[0] = { ...newSteps[0], status: "completed", imageUrl: p.purchaseImageUrl, imageUrls: [p.purchaseImageUrl] };
-            }
-            if (p.reviewImageUrl) {
-              newSteps[1] = { ...newSteps[1], status: "completed", imageUrl: p.reviewImageUrl, imageUrls: [p.reviewImageUrl] };
-            }
-          }
-          setSteps(newSteps);
-
-          // 페이백 상태 결정
-          if (p.status === "approved") {
-            setPaybackStatus("paying");
-          } else if (newSteps.every((s) => s.status === "completed")) {
-            // 모든 스텝 완료 시 검토중
-            setPaybackStatus("reviewing");
+          if (phoneData.participation) {
+            restoreParticipationState(phoneData.participation);
           }
         }
       } catch (error) {
