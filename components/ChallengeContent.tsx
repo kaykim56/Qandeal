@@ -8,6 +8,7 @@ import VerifyUploadModal from "./VerifyUploadModal";
 import PhoneVerificationModal from "./PhoneVerificationModal";
 import PhoneCheckModal from "./PhoneCheckModal";
 import Link from "next/link";
+import Image from "next/image";
 import { Participation } from "@/lib/db/participations";
 import { MissionStep } from "@/lib/types";
 import { useQandaUser } from "./QandaUserProvider";
@@ -890,12 +891,17 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
                 {step.exampleImages && step.exampleImages.length > 0 && (
                   <div className="mt-3 space-y-3">
                     {step.exampleImages.map((img, imgIdx) => (
-                      <img
-                        key={imgIdx}
-                        src={img}
-                        alt={`${step.title} 예시 ${imgIdx + 1}`}
-                        className="max-w-[320px] rounded-lg border border-gray-200 mx-auto block"
-                      />
+                      <div key={imgIdx} className="relative max-w-[320px] mx-auto">
+                        <Image
+                          src={img}
+                          alt={`${step.title} 예시 ${imgIdx + 1}`}
+                          width={320}
+                          height={320}
+                          className="rounded-lg border border-gray-200"
+                          style={{ width: "100%", height: "auto" }}
+                          loading="lazy"
+                        />
+                      </div>
                     ))}
                   </div>
                 )}
@@ -914,12 +920,17 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
             <h3 className="text-base font-semibold text-gray-900 mb-3">상품 상세 정보</h3>
             <div className="space-y-2">
               {challenge.detailImages.map((img, index) => (
-                <img
-                  key={index}
-                  src={img}
-                  alt={`상품 상세 ${index + 1}`}
-                  className="w-full rounded-lg"
-                />
+                <div key={index} className="relative w-full">
+                  <Image
+                    src={img}
+                    alt={`상품 상세 ${index + 1}`}
+                    width={800}
+                    height={800}
+                    className="rounded-lg"
+                    style={{ width: "100%", height: "auto" }}
+                    loading="lazy"
+                  />
+                </div>
               ))}
             </div>
           </div>

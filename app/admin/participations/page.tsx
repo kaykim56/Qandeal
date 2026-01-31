@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Check, X, Eye, Loader2, ChevronLeft, ImageIcon } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 interface Participation {
   id: string;
@@ -176,9 +177,11 @@ export default function VerificationsPage() {
                           className="aspect-square bg-gray-50 cursor-pointer relative group"
                           onClick={() => setSelectedImage(p.purchaseImageUrl)}
                         >
-                          <img
+                          <Image
                             src={p.purchaseImageUrl}
                             alt="구매 인증"
+                            width={200}
+                            height={200}
                             className="w-full h-full object-cover"
                             loading="lazy"
                           />
@@ -193,9 +196,11 @@ export default function VerificationsPage() {
                           className="aspect-square bg-gray-50 cursor-pointer relative group"
                           onClick={() => setSelectedImage(p.reviewImageUrl)}
                         >
-                          <img
+                          <Image
                             src={p.reviewImageUrl}
                             alt="리뷰 인증"
+                            width={200}
+                            height={200}
                             className="w-full h-full object-cover"
                             loading="lazy"
                           />
@@ -306,11 +311,14 @@ export default function VerificationsPage() {
                           p.purchaseImageUrl ? "bg-green-50" : "bg-gray-100"
                         }`}>
                           {p.purchaseImageUrl ? (
-                            <img
+                            <Image
                               src={p.purchaseImageUrl}
                               alt="구매"
+                              width={80}
+                              height={80}
                               className="w-full h-full object-cover rounded-lg cursor-pointer"
                               onClick={() => setSelectedImage(p.purchaseImageUrl)}
+                              loading="lazy"
                             />
                           ) : (
                             <div className="text-center">
@@ -324,11 +332,14 @@ export default function VerificationsPage() {
                           p.reviewImageUrl ? "bg-green-50" : "bg-gray-100"
                         }`}>
                           {p.reviewImageUrl ? (
-                            <img
+                            <Image
                               src={p.reviewImageUrl}
                               alt="리뷰"
+                              width={80}
+                              height={80}
                               className="w-full h-full object-cover rounded-lg cursor-pointer"
                               onClick={() => setSelectedImage(p.reviewImageUrl)}
+                              loading="lazy"
                             />
                           ) : (
                             <div className="text-center">

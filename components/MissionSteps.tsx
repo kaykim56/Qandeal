@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Camera, RefreshCw, X, ChevronLeft, ChevronRight, Images } from "lucide-react";
+import Image from "next/image";
 
 export interface Step {
   title: string;
@@ -325,11 +326,16 @@ export default function MissionSteps({
                 const currentImage = images[previewImageIndex] || images[0];
                 return (
                   <>
-                    <img
-                      src={currentImage}
-                      alt={`인증 이미지 ${previewImageIndex + 1}`}
-                      className="w-full max-h-[60vh] object-contain bg-gray-100"
-                    />
+                    <div className="relative w-full max-h-[60vh] bg-gray-100 flex items-center justify-center">
+                      <Image
+                        src={currentImage}
+                        alt={`인증 이미지 ${previewImageIndex + 1}`}
+                        width={400}
+                        height={600}
+                        className="object-contain max-h-[60vh]"
+                        style={{ width: "auto", height: "auto", maxHeight: "60vh" }}
+                      />
+                    </div>
 
                     {/* 이미지 개수 표시 */}
                     {images.length > 1 && (
@@ -388,7 +394,7 @@ export default function MissionSteps({
                         idx === previewImageIndex ? "border-orange-500" : "border-gray-200"
                       }`}
                     >
-                      <img src={img} alt={`썸네일 ${idx + 1}`} className="w-full h-full object-cover" />
+                      <Image src={img} alt={`썸네일 ${idx + 1}`} width={48} height={48} className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>

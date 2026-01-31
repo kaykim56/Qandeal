@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { X, Image, Upload, Loader2, Plus, Trash2 } from "lucide-react";
+import { X, Image as ImageIcon, Upload, Loader2, Plus, Trash2 } from "lucide-react";
+import NextImage from "next/image";
 import { trackEvent } from "./MixpanelProvider";
 
 const MAX_IMAGES = 3;
@@ -278,11 +279,15 @@ export default function VerifyUploadModal({
               <p className="text-xs font-medium text-orange-600 mb-2 text-center">예시 이미지</p>
               <div className="flex flex-col items-center gap-3">
                 {exampleImages.map((img, idx) => (
-                  <img
+                  <NextImage
                     key={idx}
                     src={img}
                     alt={`예시 ${idx + 1}`}
-                    className="max-w-[180px] rounded-lg border border-orange-200"
+                    width={180}
+                    height={180}
+                    className="rounded-lg border border-orange-200"
+                    style={{ width: "auto", height: "auto", maxWidth: "180px" }}
+                    loading="lazy"
                   />
                 ))}
               </div>
@@ -360,7 +365,7 @@ export default function VerifyUploadModal({
               onClick={triggerFileInput}
               className="w-full flex flex-col items-center justify-center gap-2 py-10 border-2 border-dashed border-gray-300 rounded-xl hover:border-orange-400 hover:bg-orange-50 transition-colors mb-4"
             >
-              <Image className="w-10 h-10 text-gray-400" />
+              <ImageIcon className="w-10 h-10 text-gray-400" />
               <span className="text-sm text-gray-600">갤러리에서 스크린샷 선택</span>
               <span className="text-xs text-gray-400">최대 {MAX_IMAGES}장까지 선택 가능</span>
             </button>
