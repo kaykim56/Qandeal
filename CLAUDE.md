@@ -89,6 +89,20 @@ Supabase DB에는 실제 사용자 데이터가 저장되어 있습니다.
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase 익명 키
 - `SUPABASE_SERVICE_ROLE_KEY` - Supabase 서비스 롤 키 (서버 전용)
 
+### ⚠️ 환경 변수 주의사항
+
+**.env 파일에서 값에 리터럴 `\n` 문자가 포함된 경우가 있음!**
+
+```
+# 잘못된 예시 (.env.production에서 실제 발생)
+NEXT_PUBLIC_SUPABASE_URL="https://xxx.supabase.co\n"
+
+# 스크립트에서 환경변수 파싱 시 반드시 \n 제거 필요
+value = value.replace(/\\n/g, "");
+```
+
+**특히 Vercel에서 자동 생성된 환경변수 파일에서 자주 발생함.**
+
 ## 배포
 
 ### 🚨 배포 규칙 (필수)
