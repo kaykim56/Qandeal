@@ -1,5 +1,6 @@
 import { google, sheets_v4 } from "googleapis";
 import { createServiceRoleClient } from "./supabase";
+import { getKSTISOString } from "./date-utils";
 
 // =====================================================
 // Google Sheets 동기화 (Supabase → Google Sheets 단방향)
@@ -459,7 +460,7 @@ export interface SyncResult {
 }
 
 export async function syncToSheets(): Promise<SyncResult> {
-  const timestamp = new Date().toISOString();
+  const timestamp = getKSTISOString();
 
   try {
     // 1. Supabase에서 데이터 조회

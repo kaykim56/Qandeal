@@ -1,6 +1,7 @@
 import { google } from "googleapis";
 import { nanoid } from "nanoid";
 import { Challenge, ChallengeInput, ChallengeWithMissions, Mission, MissionStep } from "./types";
+import { getKSTISOString } from "./date-utils";
 
 // Google Sheets 인증
 function getAuth() {
@@ -79,7 +80,7 @@ export async function getChallengeById(id: string): Promise<ChallengeWithMission
 export async function createChallenge(input: ChallengeInput, createdBy?: string): Promise<string> {
   const sheets = getSheets();
   const id = nanoid(8);
-  const now = new Date().toISOString();
+  const now = getKSTISOString();
 
   // missionSteps에서 첫 번째 스텝의 deadline을 purchaseDeadline으로, 마지막 스텝을 reviewDeadline으로 사용 (하위 호환)
   const purchaseDeadline = input.missionSteps?.[0]?.deadline || input.purchaseDeadline || "";
@@ -161,7 +162,7 @@ export async function updateChallenge(id: string, input: Partial<ChallengeInput>
   if (rowIndex === -1) return false;
 
   const existing = rowToChallenge(rows[rowIndex]);
-  const updated = { ...existing, ...input, updatedAt: new Date().toISOString() };
+  const updated = { ...existing, ...input, updatedAt: getKSTISOString() };
 
   // missionSteps에서 deadline 추출 (하위 호환용) - 마지막 스텝을 reviewDeadline으로
   const purchaseDeadline = updated.missionSteps?.[0]?.deadline || updated.purchaseDeadline || "";
@@ -335,7 +336,7 @@ export async function createParticipation(data: {
 }): Promise<string> {
   const sheets = getSheets();
   const id = nanoid(8);
-  const now = new Date().toISOString();
+  const now = getKSTISOString();
 
   const row = [
     id,
@@ -458,7 +459,7 @@ export async function updateParticipationStatus(
     return false;
   }
 
-  const now = new Date().toISOString();
+  const now = getKSTISOString();
   const sheetRow = rowIndex + 2;
 
   // F열(status), G열(createdAt 유지), H열(reviewedAt), I열(reviewedBy)

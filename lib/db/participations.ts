@@ -1,4 +1,5 @@
 import { createServiceRoleClient } from "../supabase";
+import { getKSTISOString } from "../date-utils";
 
 // =====================================================
 // 타입 정의
@@ -297,7 +298,7 @@ export async function updateParticipationStatus(
     .from("participations")
     .update({
       status,
-      reviewed_at: new Date().toISOString(),
+      reviewed_at: getKSTISOString(),
       reviewed_by: reviewedBy,
     })
     .eq("id", id);
