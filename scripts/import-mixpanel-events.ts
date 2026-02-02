@@ -24,6 +24,7 @@ const supabase = createClient(
 
 const mixpanel = Mixpanel.init(process.env.NEXT_PUBLIC_MIXPANEL_TOKEN!, {
   protocol: "https",
+  secret: process.env.MIXPANEL_API_SECRET,
 });
 
 const COMMON_PROPERTIES = {
