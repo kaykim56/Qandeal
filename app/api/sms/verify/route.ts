@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyCode, validatePhoneNumber, formatPhoneNumber } from "@/lib/verification-codes";
+import { trackServerEvent, setServerUserProfile } from "@/lib/mixpanel";
 import * as crypto from "crypto";
 
 // Node.js 런타임 사용
@@ -89,12 +90,23 @@ export async function POST(request: Request) {
 
     // 성공 시 토큰 발급
     const verificationToken = generateVerificationToken(phoneNumber);
+    const formattedPhone = formatPhoneNumber(phoneNumber);
+
+    // 서버 사이드 Mixpanel 이벤트 (광고 차단기 영향 없음)
+    trackServerEvent("phone_verify_success", normalizedPhone, {
+      phone_number: formattedPhone,
+    });
+
+    // 사용자 프로필 업데이트
+    setServerUserProfile(normalizedPhone, {
+      $phone: formattedPhone,
+    });
 
     return NextResponse.json({
       success: true,
       message: "인증이 완료되었습니다.",
       verificationToken,
-      phoneNumber: formatPhoneNumber(phoneNumber),
+      phoneNumber: formattedPhone,
     });
   } catch (error) {
     console.error("인증 검증 오류:", error);
