@@ -214,11 +214,13 @@ async function fetchSyncData(): Promise<ParticipationData[]> {
 function formatDateTime(isoString: string | null): string {
   if (!isoString) return "";
   const date = new Date(isoString);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
+  // DB에 KST 시간이 UTC 형식으로 저장되어 있으므로 UTC 메서드 사용
+  // 이렇게 하면 Vercel(UTC), 로컬(KST) 어디서든 동일한 결과
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const hours = String(date.getUTCHours()).padStart(2, "0");
+  const minutes = String(date.getUTCMinutes()).padStart(2, "0");
   return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
 
