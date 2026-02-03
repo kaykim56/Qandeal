@@ -1078,6 +1078,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
         participationId={participationId || ""}
         challengeId={challenge.id}
         challengeTitle={challenge.title}
+        phoneNumber={verifiedPhone || undefined}
       />
 
       <PhoneVerificationModal

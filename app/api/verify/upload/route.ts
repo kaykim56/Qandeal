@@ -1,25 +1,39 @@
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
-import { updateParticipationImage } from "@/lib/db/participations";
+import { updateParticipationImage, getParticipationByPhone } from "@/lib/db/participations";
 
 // POST /api/verify/upload - 인증 사진 업로드 (Vercel Blob)
 export async function POST(request: Request): Promise<NextResponse> {
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
-    const participationId = formData.get("participationId") as string;
+    let participationId = formData.get("participationId") as string | null;
     const stepType = formData.get("stepType") as "purchase" | "review";
     const stepOrderStr = formData.get("stepOrder") as string | null;
     const stepOrder = stepOrderStr ? parseInt(stepOrderStr, 10) : undefined;
     const imageOrderStr = formData.get("imageOrder") as string | null;
     const imageOrder = imageOrderStr ? parseInt(imageOrderStr, 10) : 1;
 
+    // 전화번호 기반 참여 조회를 위한 추가 파라미터
+    const challengeId = formData.get("challengeId") as string | null;
+    const phoneNumber = formData.get("phoneNumber") as string | null;
+
     if (!file) {
       return NextResponse.json({ error: "파일이 없습니다" }, { status: 400 });
     }
 
+    // participationId가 없으면 challengeId + phoneNumber로 조회 시도
+    if (!participationId && challengeId && phoneNumber) {
+      console.log(`[verify/upload] No participationId, trying phone lookup: challengeId=${challengeId}, phone=${phoneNumber}`);
+      const participation = await getParticipationByPhone(challengeId, phoneNumber);
+      if (participation) {
+        participationId = participation.id;
+        console.log(`[verify/upload] Found participation by phone: ${participationId}`);
+      }
+    }
+
     if (!participationId) {
-      return NextResponse.json({ error: "participationId가 필요합니다" }, { status: 400 });
+      return NextResponse.json({ error: "participationId가 필요합니다. 전화번호와 챌린지 ID로도 찾을 수 없습니다." }, { status: 400 });
     }
 
     // 파일 크기 제한 (10MB)

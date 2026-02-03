@@ -71,6 +71,8 @@ interface VerifyUploadModalProps {
   // Mixpanel 이벤트용
   challengeId?: string;
   challengeTitle?: string;
+  // 전화번호 기반 참여 조회를 위한 fallback
+  phoneNumber?: string;
 }
 
 export default function VerifyUploadModal({
@@ -86,6 +88,7 @@ export default function VerifyUploadModal({
   existingImages = [],
   challengeId,
   challengeTitle,
+  phoneNumber,
 }: VerifyUploadModalProps) {
   const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -188,6 +191,13 @@ export default function VerifyUploadModal({
         }
         // 이미지 순서 (1, 2, 3)
         formData.append("imageOrder", String(startImageOrder + i));
+        // 전화번호 기반 참여 조회를 위한 fallback 파라미터
+        if (challengeId) {
+          formData.append("challengeId", challengeId);
+        }
+        if (phoneNumber) {
+          formData.append("phoneNumber", phoneNumber);
+        }
 
         // AbortController로 타임아웃 설정
         const controller = new AbortController();
