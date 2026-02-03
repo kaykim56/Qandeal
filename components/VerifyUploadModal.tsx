@@ -369,18 +369,6 @@ export default function VerifyUploadModal({
             </div>
           )}
 
-          {/* 아직 선택된 이미지가 없을 때 */}
-          {existingImages.length === 0 && selectedImages.length === 0 && (
-            <button
-              onClick={triggerFileInput}
-              className="w-full flex flex-col items-center justify-center gap-1.5 py-5 border-2 border-dashed border-gray-300 rounded-xl hover:border-orange-400 hover:bg-orange-50 transition-colors mb-3"
-            >
-              <ImageIcon className="w-8 h-8 text-gray-400" />
-              <span className="text-sm text-gray-600">갤러리에서 스크린샷 선택</span>
-              <span className="text-xs text-gray-400">최대 {MAX_IMAGES}장까지 선택 가능</span>
-            </button>
-          )}
-
           {/* 에러 메시지 */}
           {error && (
             <p className="text-sm text-red-500 mb-4 text-center whitespace-pre-line">{error}</p>
@@ -399,12 +387,12 @@ export default function VerifyUploadModal({
             </div>
           )}
 
-          {/* 업로드 버튼 */}
+          {/* 업로드/선택 버튼 */}
           <button
-            onClick={handleUpload}
-            disabled={selectedImages.length === 0 || isUploading}
+            onClick={selectedImages.length > 0 ? handleUpload : triggerFileInput}
+            disabled={isUploading}
             className="w-full py-3.5 rounded-xl text-white font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ backgroundColor: selectedImages.length > 0 ? "#ff6600" : "#d1d5db" }}
+            style={{ backgroundColor: "#ff6600" }}
           >
             {isUploading ? (
               <>
@@ -417,9 +405,15 @@ export default function VerifyUploadModal({
                 {selectedImages.length}장 인증하기
               </>
             ) : existingImages.length > 0 ? (
-              "추가할 사진을 선택해주세요"
+              <>
+                <ImageIcon className="w-5 h-5" />
+                추가 사진 선택하기
+              </>
             ) : (
-              "사진을 선택해주세요"
+              <>
+                <ImageIcon className="w-5 h-5" />
+                인증 사진 업로드하기
+              </>
             )}
           </button>
 
