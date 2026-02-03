@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronLeft, Delete, AlertCircle } from "lucide-react";
+import { Delete, AlertCircle } from "lucide-react";
 import { Participation } from "@/lib/db/participations";
 
 interface PhoneCheckModalProps {
@@ -96,19 +96,8 @@ export default function PhoneCheckModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-white flex flex-col max-w-[430px] mx-auto">
-      {/* 상단 헤더 */}
-      <header className="flex items-center px-4 py-3">
-        <button
-          onClick={onClose}
-          className="flex items-center gap-1 text-gray-700 hover:text-gray-900"
-        >
-          <ChevronLeft className="w-5 h-5" />
-          <span className="text-sm">돌아가기</span>
-        </button>
-      </header>
-
       {/* 본문 */}
-      <div className="flex-1 px-6 pt-4">
+      <div className="flex-1 px-6 pt-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">
           전화번호를 확인하겠습니다
         </h1>
