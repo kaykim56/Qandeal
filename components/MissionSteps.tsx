@@ -316,18 +316,26 @@ export default function MissionSteps({
           onClick={() => setPreviewStep(null)}
         >
           <div
-            className="bg-white rounded-2xl max-w-sm w-full overflow-hidden max-h-[90vh] flex flex-col"
+            className="bg-white rounded-2xl max-w-sm w-full overflow-hidden max-h-[90vh] flex flex-col relative"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* 닫기 버튼 - 모달 우상단 고정 */}
+            <button
+              onClick={() => setPreviewStep(null)}
+              className="absolute top-3 right-3 z-10 p-1.5 bg-black/50 rounded-full hover:bg-black/70"
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
+
             {/* 스크롤 가능한 컨텐츠 영역 */}
             <div className="overflow-y-auto flex-1">
               {/* 헤더 - 스텝 제목과 설명 */}
-              <div className="p-4 border-b border-gray-100">
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
+              <div className="px-3 pt-3 pb-2 pr-12 border-b border-gray-100">
+                <h3 className="text-base font-bold text-gray-900 mb-1">
                   {steps[previewStep].title.replace(/\n/g, " ")}
                 </h3>
                 {steps[previewStep].description && (
-                  <p className="text-sm text-gray-600">
+                  <p className="text-xs text-gray-600 leading-relaxed">
                     {steps[previewStep].description}
                   </p>
                 )}
@@ -335,18 +343,18 @@ export default function MissionSteps({
 
               {/* 예시 이미지 */}
               {steps[previewStep].exampleImages && steps[previewStep].exampleImages!.length > 0 && (
-                <div className="p-4 bg-orange-50 border-b border-orange-100">
-                  <p className="text-xs font-medium text-orange-600 mb-2 text-center">예시 이미지</p>
+                <div className="px-3 py-2 bg-orange-50 border-b border-orange-100">
+                  <p className="text-xs font-medium text-orange-600 mb-1.5 text-center">예시 이미지</p>
                   <div className="flex flex-col items-center gap-2">
                     {steps[previewStep].exampleImages!.map((img, idx) => (
                       <Image
                         key={idx}
                         src={img}
                         alt={`예시 ${idx + 1}`}
-                        width={200}
-                        height={280}
+                        width={280}
+                        height={400}
                         className="rounded-lg border border-orange-200"
-                        style={{ width: "auto", height: "auto", maxWidth: "200px" }}
+                        style={{ width: "auto", height: "auto", maxWidth: "280px" }}
                         loading="lazy"
                       />
                     ))}
@@ -355,8 +363,8 @@ export default function MissionSteps({
               )}
 
               {/* 내가 올린 인증 이미지 */}
-              <div className="px-4 pt-4">
-                <p className="text-xs font-medium text-gray-500 mb-2 text-center">내가 올린 인증 사진</p>
+              <div className="px-3 pt-2">
+                <p className="text-xs font-medium text-gray-500 mb-1.5 text-center">내가 올린 인증 사진</p>
               </div>
               {/* 이미지 */}
               <div className="relative">
@@ -365,14 +373,14 @@ export default function MissionSteps({
                 const currentImage = images[previewImageIndex] || images[0];
                 return (
                   <>
-                    <div className="relative w-full max-h-[40vh] bg-gray-100 flex items-center justify-center">
+                    <div className="relative w-full max-h-[35vh] bg-gray-100 flex items-center justify-center">
                       <Image
                         src={currentImage}
                         alt={`인증 이미지 ${previewImageIndex + 1}`}
                         width={400}
                         height={600}
-                        className="object-contain max-h-[40vh]"
-                        style={{ width: "auto", height: "auto", maxHeight: "40vh" }}
+                        className="object-contain max-h-[35vh]"
+                        style={{ width: "auto", height: "auto", maxHeight: "35vh" }}
                       />
                     </div>
 
@@ -413,27 +421,21 @@ export default function MissionSteps({
                   </>
                 );
               })()}
-              <button
-                onClick={() => setPreviewStep(null)}
-                className="absolute top-3 right-3 p-1.5 bg-black/50 rounded-full hover:bg-black/70"
-              >
-                <X className="w-5 h-5 text-white" />
-              </button>
             </div>
 
             {/* 썸네일 (2장 이상일 때) */}
             {getStepImages(steps[previewStep]).length > 1 && (
-              <div className="p-3 border-t border-gray-100">
+              <div className="px-3 py-2">
                 <div className="flex gap-2 justify-center">
                   {getStepImages(steps[previewStep]).map((img, idx) => (
                     <button
                       key={idx}
                       onClick={() => setPreviewImageIndex(idx)}
-                      className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition-colors ${
+                      className={`w-10 h-10 rounded-lg overflow-hidden border-2 transition-colors ${
                         idx === previewImageIndex ? "border-orange-500" : "border-gray-200"
                       }`}
                     >
-                      <Image src={img} alt={`썸네일 ${idx + 1}`} width={48} height={48} className="w-full h-full object-cover" />
+                      <Image src={img} alt={`썸네일 ${idx + 1}`} width={40} height={40} className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -444,7 +446,7 @@ export default function MissionSteps({
             {/* 스크롤 영역 끝 */}
 
             {/* 하단 버튼 - 고정 */}
-            <div className="p-4 border-t border-gray-100 flex-shrink-0">
+            <div className="px-3 py-3 border-t border-gray-100 flex-shrink-0">
               {canReplace ? (
                 <button
                   onClick={() => {
