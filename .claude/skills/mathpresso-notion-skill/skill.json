@@ -1,0 +1,76 @@
+{
+  "name": "mathpresso-notion",
+  "displayName": "Mathpresso Notion Project Management",
+  "description": "Notion MCP를 활용한 매스프레소 프로젝트 관리 자동화. Git commit 기반 Task 자동 생성, GitHub PR 연결, Slack 컨텍스트 추출까지 통합 지원.",
+  "version": "2.0.0",
+  "triggers": [
+    "notion", "task", "epic", "initiative", "project",
+    "프로젝트", "일감", "태스크", "에픽",
+    "git", "commit", "커밋", "backfill",
+    "done 처리", "완료 처리", "기록", "누락", "history",
+    "pr", "pull request", "github"
+  ],
+  "requiredMCPs": [
+    {
+      "name": "notion",
+      "description": "Notion 데이터베이스 CRUD",
+      "tools": [
+        "notion-create-pages",
+        "notion-update-page",
+        "notion-search",
+        "notion-query-data-sources",
+        "notion-fetch",
+        "notion-get-users"
+      ]
+    },
+    {
+      "name": "github",
+      "description": "GitHub PR 정보 조회",
+      "tools": ["gh"],
+      "optional": false
+    },
+    {
+      "name": "slack",
+      "description": "Slack 스레드에서 Background 컨텍스트 추출",
+      "tools": [
+        "slack_search_public",
+        "slack_search_channels",
+        "slack_read_thread",
+        "slack_read_channel"
+      ],
+      "optional": true
+    }
+  ],
+  "requiredTools": [
+    "Bash"
+  ],
+  "files": [
+    "SKILL.md",
+    "TASK_TEMPLATE.md",
+    "GIT_TASK_SYNC.md",
+    "DEV_WORKFLOW.md",
+    "QUICK_REFERENCE.md",
+    "SETUP_GUIDE.md",
+    "config.template.yaml"
+  ],
+  "workflows": {
+    "manual_task_creation": {
+      "description": "수동 Task 생성",
+      "entryPoint": "SKILL.md#task-creation-workflow"
+    },
+    "git_backfill": {
+      "description": "Git 기반 Task 자동 생성 및 완료 처리",
+      "entryPoint": "GIT_TASK_SYNC.md",
+      "requires": ["notion", "github"]
+    },
+    "git_backfill_with_slack": {
+      "description": "Git + Slack 컨텍스트 포함 Task 생성",
+      "entryPoint": "GIT_TASK_SYNC.md",
+      "requires": ["notion", "github", "slack"]
+    },
+    "task_template": {
+      "description": "Task 템플릿 및 자동 채움 규칙",
+      "entryPoint": "TASK_TEMPLATE.md"
+    }
+  }
+}
