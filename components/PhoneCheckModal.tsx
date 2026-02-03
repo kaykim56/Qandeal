@@ -99,10 +99,10 @@ export default function PhoneCheckModal({
       {/* 본문 */}
       <div className="flex-1 px-6 pt-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">
-          전화번호를 확인하겠습니다
+          전화번호를 입력해주세요
         </h1>
         <p className="text-gray-500 mb-6">
-          참여할 때 인증하신 전화번호를 입력해주세요
+          참여 시 등록한 번호로 인증 상태를 확인할게요
         </p>
 
         {/* 전화번호 표시 */}
