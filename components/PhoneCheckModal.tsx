@@ -110,8 +110,7 @@ export default function PhoneCheckModal({
           />
         </div>
         <p className="text-lg text-gray-700 text-center mb-2">
-          <span className="font-semibold">득템딜</span>에 참여하셨던<br />
-          전화번호 확인이 필요해요
+          <span className="font-semibold">득템딜</span> 전화번호 확인이 필요해요
         </p>
         <p className="text-sm text-gray-500 text-center mb-6">
           참여 시 등록한 번호로 참가 이력을 확인할게요
