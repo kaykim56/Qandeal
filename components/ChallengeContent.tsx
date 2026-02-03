@@ -967,6 +967,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
           <Link
             href={challenge.productLink || "#"}
             target="_blank"
+            rel="noreferrer noopener"
             className="flex-1 py-3.5 rounded-xl text-sm font-semibold text-white transition-colors text-center"
             style={{ backgroundColor: "#3b82f6" }}
           >
