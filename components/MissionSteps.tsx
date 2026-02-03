@@ -316,24 +316,63 @@ export default function MissionSteps({
           onClick={() => setPreviewStep(null)}
         >
           <div
-            className="bg-white rounded-2xl max-w-sm w-full overflow-hidden"
+            className="bg-white rounded-2xl max-w-sm w-full overflow-hidden max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* 이미지 */}
-            <div className="relative">
+            {/* 스크롤 가능한 컨텐츠 영역 */}
+            <div className="overflow-y-auto flex-1">
+              {/* 헤더 - 스텝 제목과 설명 */}
+              <div className="p-4 border-b border-gray-100">
+                <h3 className="text-lg font-bold text-gray-900 mb-2">
+                  {steps[previewStep].title.replace(/\n/g, " ")}
+                </h3>
+                {steps[previewStep].description && (
+                  <p className="text-sm text-gray-600">
+                    {steps[previewStep].description}
+                  </p>
+                )}
+              </div>
+
+              {/* 예시 이미지 */}
+              {steps[previewStep].exampleImages && steps[previewStep].exampleImages!.length > 0 && (
+                <div className="p-4 bg-orange-50 border-b border-orange-100">
+                  <p className="text-xs font-medium text-orange-600 mb-2 text-center">예시 이미지</p>
+                  <div className="flex flex-col items-center gap-2">
+                    {steps[previewStep].exampleImages!.map((img, idx) => (
+                      <Image
+                        key={idx}
+                        src={img}
+                        alt={`예시 ${idx + 1}`}
+                        width={200}
+                        height={280}
+                        className="rounded-lg border border-orange-200"
+                        style={{ width: "auto", height: "auto", maxWidth: "200px" }}
+                        loading="lazy"
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 내가 올린 인증 이미지 */}
+              <div className="px-4 pt-4">
+                <p className="text-xs font-medium text-gray-500 mb-2 text-center">내가 올린 인증 사진</p>
+              </div>
+              {/* 이미지 */}
+              <div className="relative">
               {(() => {
                 const images = getStepImages(steps[previewStep]);
                 const currentImage = images[previewImageIndex] || images[0];
                 return (
                   <>
-                    <div className="relative w-full max-h-[60vh] bg-gray-100 flex items-center justify-center">
+                    <div className="relative w-full max-h-[40vh] bg-gray-100 flex items-center justify-center">
                       <Image
                         src={currentImage}
                         alt={`인증 이미지 ${previewImageIndex + 1}`}
                         width={400}
                         height={600}
-                        className="object-contain max-h-[60vh]"
-                        style={{ width: "auto", height: "auto", maxHeight: "60vh" }}
+                        className="object-contain max-h-[40vh]"
+                        style={{ width: "auto", height: "auto", maxHeight: "40vh" }}
                       />
                     </div>
 
@@ -401,8 +440,11 @@ export default function MissionSteps({
               </div>
             )}
 
-            {/* 하단 버튼 */}
-            <div className="p-4">
+            </div>
+            {/* 스크롤 영역 끝 */}
+
+            {/* 하단 버튼 - 고정 */}
+            <div className="p-4 border-t border-gray-100 flex-shrink-0">
               {canReplace ? (
                 <button
                   onClick={() => {
