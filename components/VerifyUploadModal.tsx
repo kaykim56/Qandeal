@@ -94,6 +94,7 @@ export default function VerifyUploadModal({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
@@ -314,38 +315,47 @@ export default function VerifyUploadModal({
             className="hidden"
           />
 
-          {/* 기존 업로드된 이미지 + 새로 선택한 이미지 그리드 */}
+          {/* 기존 업로드된 이미지 + 새로 선택한 이미지 그리드 (작은 썸네일) */}
           {(existingImages.length > 0 || selectedImages.length > 0) && (
-            <div className="mb-4">
-              <div className="grid grid-cols-3 gap-2">
+            <div className="mb-3">
+              <div className="flex flex-wrap gap-2 justify-center">
                 {/* 기존 이미지 */}
                 {existingImages.map((url, index) => (
-                  <div key={`existing-${index}`} className="relative aspect-square">
+                  <button
+                    key={`existing-${index}`}
+                    onClick={() => setPreviewImage(url)}
+                    className="relative w-16 h-16 flex-shrink-0"
+                  >
                     <img
                       src={url}
                       alt={`기존 이미지 ${index + 1}`}
                       className="w-full h-full object-cover rounded-lg border border-gray-200"
                     />
-                    <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-blue-500 text-white text-xs rounded">
+                    <div className="absolute top-0.5 left-0.5 px-1 py-0.5 bg-blue-500 text-white text-[10px] rounded">
                       {index + 1}
                     </div>
-                  </div>
+                  </button>
                 ))}
 
                 {/* 새로 선택한 이미지 */}
                 {selectedImages.map((img, index) => (
-                  <div key={`new-${index}`} className="relative aspect-square">
-                    <img
-                      src={img.preview}
-                      alt={`새 이미지 ${index + 1}`}
-                      className="w-full h-full object-cover rounded-lg border-2 border-orange-400"
-                    />
-                    <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-orange-500 text-white text-xs rounded">
+                  <div key={`new-${index}`} className="relative w-16 h-16 flex-shrink-0">
+                    <button
+                      onClick={() => setPreviewImage(img.preview)}
+                      className="w-full h-full"
+                    >
+                      <img
+                        src={img.preview}
+                        alt={`새 이미지 ${index + 1}`}
+                        className="w-full h-full object-cover rounded-lg border-2 border-orange-400"
+                      />
+                    </button>
+                    <div className="absolute top-0.5 left-0.5 px-1 py-0.5 bg-orange-500 text-white text-[10px] rounded">
                       {existingImages.length + index + 1}
                     </div>
                     <button
                       onClick={() => removeImage(index)}
-                      className="absolute top-1 right-1 p-1 bg-red-500 rounded-full"
+                      className="absolute -top-1 -right-1 p-0.5 bg-red-500 rounded-full"
                     >
                       <X className="w-3 h-3 text-white" />
                     </button>
@@ -356,15 +366,14 @@ export default function VerifyUploadModal({
                 {remainingSlots > 0 && (
                   <button
                     onClick={triggerFileInput}
-                    className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg hover:border-orange-400 hover:bg-orange-50 transition-colors"
+                    className="w-16 h-16 flex-shrink-0 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg hover:border-orange-400 hover:bg-orange-50 transition-colors"
                   >
-                    <Plus className="w-6 h-6 text-gray-400" />
-                    <span className="text-xs text-gray-400 mt-1">추가</span>
+                    <Plus className="w-5 h-5 text-gray-400" />
                   </button>
                 )}
               </div>
-              <p className="text-xs text-gray-400 mt-2 text-center">
-                {existingImages.length + selectedImages.length}/{MAX_IMAGES}장 선택됨
+              <p className="text-xs text-gray-400 mt-1.5 text-center">
+                {existingImages.length + selectedImages.length}/{MAX_IMAGES}장 선택됨 · 탭하여 크게 보기
               </p>
             </div>
           )}
@@ -428,6 +437,27 @@ export default function VerifyUploadModal({
           </div>
         </div>
       </div>
+
+      {/* 이미지 크게 보기 모달 */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setPreviewImage(null)}
+        >
+          <button
+            onClick={() => setPreviewImage(null)}
+            className="absolute top-4 right-4 p-2 bg-black/50 rounded-full hover:bg-black/70"
+          >
+            <X className="w-6 h-6 text-white" />
+          </button>
+          <img
+            src={previewImage}
+            alt="미리보기"
+            className="max-w-full max-h-[80vh] object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }
