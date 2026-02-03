@@ -965,9 +965,8 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
 
         <div className="flex gap-3">
           <Link
-            href={challenge.productLink || "#"}
+            href={challenge.productLink ? `/api/redirect?url=${encodeURIComponent(challenge.productLink)}` : "#"}
             target="_blank"
-            rel="noreferrer noopener"
             className="flex-1 py-3.5 rounded-xl text-sm font-semibold text-white transition-colors text-center"
             style={{ backgroundColor: "#3b82f6" }}
           >
