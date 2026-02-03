@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Delete, AlertCircle } from "lucide-react";
+import Image from "next/image";
 import { Participation } from "@/lib/db/participations";
 
 interface PhoneCheckModalProps {
@@ -98,11 +99,19 @@ export default function PhoneCheckModal({
     <div className="fixed inset-0 z-50 bg-white flex flex-col max-w-[430px] mx-auto">
       {/* 본문 */}
       <div className="flex-1 px-6 pt-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">
-          전화번호를 입력해주세요
-        </h1>
-        <p className="text-gray-500 mb-6">
-          참여 시 등록한 번호로 인증 상태를 확인할게요
+        {/* QANDA 로고 */}
+        <div className="flex justify-center mb-4">
+          <Image
+            src="/logo-qanda-full.png"
+            alt="QANDA"
+            width={120}
+            height={32}
+            className="h-8 w-auto"
+          />
+        </div>
+        <p className="text-lg text-gray-700 text-center mb-6">
+          <span className="font-semibold">득템딜</span>에 참여하셨던<br />
+          전화번호 확인이 필요해요
         </p>
 
         {/* 전화번호 표시 */}
