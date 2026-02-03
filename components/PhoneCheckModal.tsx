@@ -10,6 +10,7 @@ interface PhoneCheckModalProps {
   onClose: () => void;
   onPhoneConfirmed: (phoneNumber: string, participation: Participation | null) => void;
   challengeId: string;
+  paybackAmount?: number;
 }
 
 export default function PhoneCheckModal({
@@ -17,6 +18,7 @@ export default function PhoneCheckModal({
   onClose,
   onPhoneConfirmed,
   challengeId,
+  paybackAmount,
 }: PhoneCheckModalProps) {
   const [phone, setPhone] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -128,6 +130,13 @@ export default function PhoneCheckModal({
             </span>
           </div>
         </div>
+
+        {/* 페이백 안내 */}
+        {paybackAmount && (
+          <p className="text-sm text-center mb-4" style={{ color: "#ff6600" }}>
+            끝까지 참여하고 인증해서, <span className="font-bold">{paybackAmount.toLocaleString()}원</span> 페이백 받으세요!
+          </p>
+        )}
 
         {/* 에러 메시지 */}
         {error && (

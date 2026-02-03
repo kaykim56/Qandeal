@@ -1097,6 +1097,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
         }}
         onPhoneConfirmed={handlePhoneConfirmed}
         challengeId={challenge.id}
+        paybackAmount={challenge.paybackAmount}
       />
     </>
   );
