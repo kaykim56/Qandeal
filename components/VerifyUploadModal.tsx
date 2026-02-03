@@ -293,10 +293,10 @@ export default function VerifyUploadModal({
                     key={idx}
                     src={img}
                     alt={`예시 ${idx + 1}`}
-                    width={180}
-                    height={180}
+                    width={280}
+                    height={400}
                     className="rounded-lg border border-orange-200"
-                    style={{ width: "auto", height: "auto", maxWidth: "180px" }}
+                    style={{ width: "auto", height: "auto", maxWidth: "280px" }}
                     loading="lazy"
                   />
                 ))}
