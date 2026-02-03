@@ -279,9 +279,9 @@ export default function VerifyUploadModal({
         </div>
 
         {/* 컨텐츠 - 스크롤 가능 */}
-        <div className="p-4 overflow-y-auto flex-1">
-          {/* 안내 문구 */}
-          <p className="text-sm text-gray-600 mb-4">{displayDescription}</p>
+        <div className="px-4 py-3 overflow-y-auto flex-1">
+          {/* 안내 문구 - 줄바꿈 지원 */}
+          <p className="text-sm text-gray-600 mb-3 whitespace-pre-line">{displayDescription}</p>
 
           {/* 예시 이미지들 */}
           {exampleImages.length > 0 && (
@@ -373,9 +373,9 @@ export default function VerifyUploadModal({
           {existingImages.length === 0 && selectedImages.length === 0 && (
             <button
               onClick={triggerFileInput}
-              className="w-full flex flex-col items-center justify-center gap-2 py-10 border-2 border-dashed border-gray-300 rounded-xl hover:border-orange-400 hover:bg-orange-50 transition-colors mb-4"
+              className="w-full flex flex-col items-center justify-center gap-1.5 py-5 border-2 border-dashed border-gray-300 rounded-xl hover:border-orange-400 hover:bg-orange-50 transition-colors mb-3"
             >
-              <ImageIcon className="w-10 h-10 text-gray-400" />
+              <ImageIcon className="w-8 h-8 text-gray-400" />
               <span className="text-sm text-gray-600">갤러리에서 스크린샷 선택</span>
               <span className="text-xs text-gray-400">최대 {MAX_IMAGES}장까지 선택 가능</span>
             </button>
@@ -424,7 +424,7 @@ export default function VerifyUploadModal({
           </button>
 
           {/* 안내사항 */}
-          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+          <div className="mt-3 p-2.5 bg-gray-50 rounded-lg">
             <p className="text-xs text-gray-500 leading-relaxed">
               • 스크린샷이 선명하게 보여야 합니다
               <br />

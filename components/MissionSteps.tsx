@@ -335,7 +335,7 @@ export default function MissionSteps({
                   {steps[previewStep].title.replace(/\n/g, " ")}
                 </h3>
                 {steps[previewStep].description && (
-                  <p className="text-xs text-gray-600 leading-relaxed">
+                  <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-line">
                     {steps[previewStep].description}
                   </p>
                 )}
