@@ -48,6 +48,25 @@ function formatDeadline(dateString: string): string {
   }
 }
 
+// 날짜 범위 포맷팅 (deadline 하루 전 ~ deadline)
+function formatDeadlineRange(endDateString: string): string {
+  if (!endDateString) return "";
+  try {
+    const endDate = new Date(endDateString);
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - 1);
+
+    const startMonth = startDate.getMonth() + 1;
+    const startDay = startDate.getDate();
+    const endMonth = endDate.getMonth() + 1;
+    const endDay = endDate.getDate();
+
+    return `${startMonth}/${startDay}-${endMonth}/${endDay}`;
+  } catch {
+    return "";
+  }
+}
+
 // 참가 신청 가능 여부 판단 함수
 interface CanParticipateResult {
   canParticipate: boolean;
@@ -103,9 +122,12 @@ function canVerifyStep(step: { title: string; deadline?: string }): CanVerifyRes
       return { canVerify: false, reason: "인증 기한이 지났습니다" };
     }
   } else {
-    // 일반 스텝 (구매 인증 등): 당일에만 가능
-    if (today < deadlineDate) {
-      return { canVerify: false, reason: `${formatDeadline(step.deadline)} 당일에 인증 가능합니다` };
+    // 일반 스텝 (구매 인증 등): deadline 하루 전부터 deadline까지 가능
+    const deadlineStart = new Date(deadlineDate);
+    deadlineStart.setDate(deadlineStart.getDate() - 1);
+
+    if (today < deadlineStart) {
+      return { canVerify: false, reason: `${formatDeadlineRange(step.deadline)}에 인증 가능합니다` };
     }
     if (today > deadlineDate) {
       return { canVerify: false, reason: "인증 기한이 지났습니다" };
@@ -715,7 +737,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
                 <span className="font-bold" style={{ color: "#cc4400" }}>구매 시간</span>
               </div>
               <span className="font-bold text-lg" style={{ color: "#cc4400" }}>
-                {formatDeadline(missionSteps[0]?.deadline || challenge.purchaseDeadline)}
+                {formatDeadlineRange(missionSteps[0]?.deadline || challenge.purchaseDeadline)}
               </span>
             </div>
             <p className="text-xs text-gray-500 mb-3 text-center">
@@ -920,7 +942,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
                       <p className="font-medium text-gray-900">{step.title}</p>
                       {step.deadline && (
                         <span className="text-xs text-orange-500">
-                          {formatDeadline(step.deadline)}
+                          {step.title.includes("리뷰") ? formatDeadline(step.deadline) : formatDeadlineRange(step.deadline)}
                         </span>
                       )}
                     </div>
