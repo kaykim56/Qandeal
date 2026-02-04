@@ -630,23 +630,8 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
       {/* 블러 처리 래퍼 */}
       <div className={isBlurred ? "blur-sm pointer-events-none select-none" : ""}>
 
-      {/* 참가 마감 안내 배너 */}
-      {isParticipationClosed && !hasParticipated && (
-        <div
-          className="px-4 py-4 text-center"
-          style={{ backgroundColor: "#fff4e5" }}
-        >
-          <p className="text-base font-semibold" style={{ color: "#cc4400" }}>
-            😢 참가 모집이 완료되었어요
-          </p>
-          <p className="text-sm mt-1" style={{ color: "#cc4400" }}>
-            다음 득템 딜에서 만나요!
-          </p>
-        </div>
-      )}
-
       {/* 제품 정보 카드 */}
-      <section className="bg-white px-4 py-5 border-b border-gray-100">
+      <section className="bg-white px-4 py-5 border-b border-gray-100 relative">
         {/* 플랫폼 태그 */}
         <span
           className={`inline-block px-2.5 py-1 text-xs font-medium rounded mb-3 ${
@@ -791,6 +776,21 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
             </div>
             </div>
           </>
+        )}
+
+        {/* 참가 마감 안내 오버레이 */}
+        {isParticipationClosed && !hasParticipated && (
+          <div
+            className="absolute bottom-0 left-0 right-0 px-4 py-4 text-center"
+            style={{ backgroundColor: "rgba(255, 244, 229, 0.95)" }}
+          >
+            <p className="text-base font-semibold" style={{ color: "#cc4400" }}>
+              😢 참가 모집이 완료되었어요
+            </p>
+            <p className="text-sm mt-1" style={{ color: "#cc4400" }}>
+              다음 득템 딜에서 만나요!
+            </p>
+          </div>
         )}
       </section>
 
