@@ -113,11 +113,11 @@ function canVerifyStep(step: { title: string; deadline?: string }): CanVerifyRes
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const deadlineDate = new Date(deadline.getFullYear(), deadline.getMonth(), deadline.getDate());
 
-  // 리뷰 인증인지 확인 (title에 "리뷰" 포함)
-  const isReviewStep = step.title.includes("리뷰");
+  // 리뷰/구매확정 인증인지 확인 (deadline까지 인증 가능한 스텝)
+  const isFlexibleDeadlineStep = step.title.includes("리뷰") || step.title.includes("구매확정");
 
-  if (isReviewStep) {
-    // 리뷰: deadline 날짜까지 가능
+  if (isFlexibleDeadlineStep) {
+    // 리뷰/구매확정: deadline 날짜까지 가능
     if (today > deadlineDate) {
       return { canVerify: false, reason: "인증 기한이 지났습니다" };
     }
@@ -942,7 +942,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
                       <p className="font-medium text-gray-900">{step.title}</p>
                       {step.deadline && (
                         <span className="text-xs text-orange-500">
-                          {step.title.includes("리뷰") ? formatDeadline(step.deadline) : formatDeadlineRange(step.deadline)}
+                          {(step.title.includes("리뷰") || step.title.includes("구매확정")) ? formatDeadline(step.deadline) : formatDeadlineRange(step.deadline)}
                         </span>
                       )}
                     </div>
