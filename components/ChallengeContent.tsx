@@ -778,8 +778,8 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
           </>
         )}
 
-        {/* 참가 마감 안내 오버레이 */}
-        {isParticipationClosed && !hasParticipated && (
+        {/* 참가 마감 안내 오버레이 - 디버깅: 항상 표시 */}
+        {true && (
           <div
             className="mt-4 px-4 py-4 text-center rounded-lg"
             style={{ backgroundColor: "rgba(255, 244, 229, 0.95)" }}
