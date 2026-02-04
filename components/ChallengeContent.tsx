@@ -1051,7 +1051,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
               className="flex-1 py-3.5 rounded-xl text-sm font-semibold text-white cursor-not-allowed"
               style={{ backgroundColor: "#9ca3af" }}
             >
-              참가 마감
+              참가 모집 마감
             </button>
           ) : (
             <button
