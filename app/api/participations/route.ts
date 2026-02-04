@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createParticipation, getParticipation, getParticipationByPhone, deleteParticipation } from "@/lib/db/participations";
+import { getChallengeById } from "@/lib/db/challenges";
 import { verifyToken } from "@/app/api/sms/verify/route";
 
 // GET /api/participations?challengeId=xxx&userId=xxx 또는
@@ -58,6 +59,35 @@ export async function POST(request: Request) {
         { error: "challengeId와 userId가 필요합니다" },
         { status: 400 }
       );
+    }
+
+    // 챌린지 조회
+    const challenge = await getChallengeById(challengeId);
+    if (!challenge) {
+      return NextResponse.json(
+        { error: "챌린지를 찾을 수 없습니다" },
+        { status: 404 }
+      );
+    }
+
+    // 참가 마감 체크 (테스터도 동일하게 적용)
+    const purchaseDeadline = challenge.missionSteps?.[0]?.deadline || challenge.purchaseDeadline;
+    if (purchaseDeadline) {
+      const now = new Date();
+      const deadline = new Date(purchaseDeadline);
+      const deadlineEnd = new Date(
+        deadline.getFullYear(),
+        deadline.getMonth(),
+        deadline.getDate(),
+        23, 59, 59
+      );
+
+      if (now > deadlineEnd) {
+        return NextResponse.json(
+          { error: "참가 신청이 마감되었습니다" },
+          { status: 400 }
+        );
+      }
     }
 
     // 전화번호 인증 토큰 검증 (테스터 이메일이 있는 경우는 어드민 테스트로 간주하여 건너뜀)

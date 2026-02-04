@@ -48,6 +48,36 @@ function formatDeadline(dateString: string): string {
   }
 }
 
+// 참가 신청 가능 여부 판단 함수
+interface CanParticipateResult {
+  canParticipate: boolean;
+  reason?: string;
+}
+
+function canParticipateChallenge(purchaseDeadline?: string): CanParticipateResult {
+  if (!purchaseDeadline) {
+    return { canParticipate: true };
+  }
+
+  const now = new Date();
+  const deadline = new Date(purchaseDeadline);
+  const deadlineEnd = new Date(
+    deadline.getFullYear(),
+    deadline.getMonth(),
+    deadline.getDate(),
+    23, 59, 59
+  );
+
+  if (now > deadlineEnd) {
+    return {
+      canParticipate: false,
+      reason: "참가 신청이 마감되었습니다"
+    };
+  }
+
+  return { canParticipate: true };
+}
+
 // 스텝별 인증 가능 여부 판단 함수
 interface CanVerifyResult {
   canVerify: boolean;
@@ -235,6 +265,12 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
         },
       ];
 
+  // 참가 마감 여부 계산 (첫 번째 스텝의 deadline 또는 purchaseDeadline 기준)
+  const participateResult = canParticipateChallenge(
+    missionSteps[0]?.deadline || challenge.purchaseDeadline
+  );
+  const isParticipationClosed = !participateResult.canParticipate;
+
   // UI용 스텝 상태
   const [steps, setSteps] = useState<Step[]>(
     missionSteps.map((ms) => {
@@ -282,6 +318,10 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
     if (typeof window === "undefined") return;
     if (qandaUser?.userId) return; // JWT userId 있으면 확인 불필요
 
+    // 테스트용 챌린지는 전화번호 확인 건너뛰기
+    const testChallengeIds = ["f4b3edb4-baa7-427b-814a-9d7ed5a542f4"];
+    if (testChallengeIds.includes(challenge.id)) return;
+
     const isQandaWebView = /QANDA|Mathpresso/i.test(navigator.userAgent);
     const isKakaoWebView = /KAKAOTALK/i.test(navigator.userAgent);
 
@@ -305,7 +345,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [qandaUser]);
+  }, [qandaUser, challenge.id]);
 
   // 참여 상태 복원 헬퍼 함수
   const restoreParticipationState = (p: Participation) => {
@@ -988,6 +1028,14 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
               }}
             >
               참가 완료
+            </button>
+          ) : isParticipationClosed ? (
+            <button
+              disabled
+              className="flex-1 py-3.5 rounded-xl text-sm font-semibold text-white cursor-not-allowed"
+              style={{ backgroundColor: "#9ca3af" }}
+            >
+              참가 마감
             </button>
           ) : (
             <button
