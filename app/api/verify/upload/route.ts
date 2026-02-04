@@ -1,6 +1,7 @@
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { updateParticipationImage, getParticipationByPhone } from "@/lib/db/participations";
+import { getKSTDateString } from "@/lib/date-utils";
 
 // POST /api/verify/upload - 인증 사진 업로드 (Vercel Blob)
 export async function POST(request: Request): Promise<NextResponse> {
@@ -52,9 +53,9 @@ export async function POST(request: Request): Promise<NextResponse> {
       );
     }
 
-    // 파일명 생성
+    // 파일명 생성 (KST 기준)
     const timestamp = Date.now();
-    const dateStr = new Date().toISOString().split("T")[0];
+    const dateStr = getKSTDateString();
     const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
     // 동적 스텝인 경우 step-{order}, 기존 형식인 경우 stepType 사용
     const stepFolder = stepOrder !== undefined ? `step-${stepOrder}` : stepType;

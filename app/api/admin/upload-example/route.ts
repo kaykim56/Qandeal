@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { put } from "@vercel/blob";
+import { getKSTDateString } from "@/lib/date-utils";
 
 // POST /api/admin/upload-example - 예시 이미지 업로드
 export async function POST(request: NextRequest) {
@@ -20,9 +21,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "File required" }, { status: 400 });
     }
 
-    // 파일명 생성
+    // 파일명 생성 (KST 기준)
     const timestamp = Date.now();
-    const dateStr = new Date().toISOString().split("T")[0];
+    const dateStr = getKSTDateString();
     const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
     const pathname = `examples/${challengeId || "new"}/step-${stepOrder || "0"}/${dateStr}_${timestamp}_${sanitizedFilename}`;
 

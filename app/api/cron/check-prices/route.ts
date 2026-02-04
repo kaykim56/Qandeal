@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllChallenges, updateChallenge } from "@/lib/db/challenges";
+import { getKSTISOString } from "@/lib/date-utils";
 
 // Vercel Cron Job을 위한 인증
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -99,7 +100,7 @@ export async function GET(request: NextRequest) {
       changed: priceChanges.length,
       priceChanges,
       results,
-      timestamp: new Date().toISOString(),
+      timestamp: getKSTISOString(),
     });
   } catch (error) {
     console.error("Price check failed:", error);

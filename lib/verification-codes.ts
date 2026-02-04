@@ -1,6 +1,7 @@
 // SMS 인증 코드 저장 및 검증 유틸리티 (Supabase 사용)
 
 import { createClient } from "@supabase/supabase-js";
+import { getKSTISOString } from "./date-utils";
 
 // 서버 전용 Supabase 클라이언트 (service role key 사용)
 function getSupabaseAdmin() {
@@ -45,7 +46,7 @@ export async function checkRateLimit(phone: string): Promise<{ allowed: boolean;
 export async function saveCode(phone: string, code: string): Promise<void> {
   const supabase = getSupabaseAdmin();
   const normalizedPhone = phone.replace(/-/g, "");
-  const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+  const expiresAt = getKSTISOString(new Date(Date.now() + 5 * 60 * 1000));
 
   // upsert로 기존 코드 덮어쓰기
   const { error } = await supabase

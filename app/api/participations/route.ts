@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createParticipation, getParticipation, getParticipationByPhone, deleteParticipation } from "@/lib/db/participations";
 import { getChallengeById } from "@/lib/db/challenges";
 import { verifyToken } from "@/app/api/sms/verify/route";
+import { getKSTDateString } from "@/lib/date-utils";
 
 // GET /api/participations?challengeId=xxx&userId=xxx 또는
 // GET /api/participations?challengeId=xxx&phoneNumber=xxx - 참여 정보 조회
@@ -70,19 +71,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // 참가 마감 체크 (테스터도 동일하게 적용)
+    // 참가 마감 체크 (테스터도 동일하게 적용, KST 기준)
     const purchaseDeadline = challenge.missionSteps?.[0]?.deadline || challenge.purchaseDeadline;
     if (purchaseDeadline) {
-      const now = new Date();
-      const deadline = new Date(purchaseDeadline);
-      const deadlineEnd = new Date(
-        deadline.getFullYear(),
-        deadline.getMonth(),
-        deadline.getDate(),
-        23, 59, 59
-      );
+      // KST 기준 현재 날짜와 deadline 날짜 비교
+      const todayKST = getKSTDateString(); // "YYYY-MM-DD"
+      const deadlineDate = purchaseDeadline.split("T")[0]; // "YYYY-MM-DD" 형식으로 정규화
 
-      if (now > deadlineEnd) {
+      if (todayKST > deadlineDate) {
         return NextResponse.json(
           { error: "참가 신청이 마감되었습니다" },
           { status: 400 }
