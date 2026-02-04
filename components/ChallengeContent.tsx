@@ -632,9 +632,15 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
 
       {/* 참가 마감 안내 배너 */}
       {isParticipationClosed && !hasParticipated && (
-        <div className="bg-gray-100 px-4 py-3 text-center">
-          <p className="text-sm text-gray-600">
-            참가 모집이 완료되었어요. 다음 득템 딜에서 만나요! 👋
+        <div
+          className="px-4 py-4 text-center"
+          style={{ backgroundColor: "#fff4e5" }}
+        >
+          <p className="text-base font-semibold" style={{ color: "#cc4400" }}>
+            😢 참가 모집이 완료되었어요
+          </p>
+          <p className="text-sm mt-1" style={{ color: "#cc4400" }}>
+            다음 득템 딜에서 만나요!
           </p>
         </div>
       )}
