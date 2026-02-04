@@ -781,7 +781,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
         {/* 참가 마감 안내 오버레이 */}
         {isParticipationClosed && !hasParticipated && (
           <div
-            className="absolute bottom-0 left-0 right-0 px-4 py-4 text-center"
+            className="mt-4 px-4 py-4 text-center rounded-lg"
             style={{ backgroundColor: "rgba(255, 244, 229, 0.95)" }}
           >
             <p className="text-base font-semibold" style={{ color: "#cc4400" }}>
