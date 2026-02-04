@@ -123,6 +123,7 @@ export async function getParticipationByPhone(
   // 전화번호 정규화 (하이픈 제거)
   const normalizedPhone = phoneNumber.replace(/-/g, "");
 
+  // 중복 참여가 있을 수 있으므로 .single() 대신 가장 최신 기록 조회
   const { data, error } = await supabase
     .from("participations")
     .select(`
@@ -131,13 +132,16 @@ export async function getParticipationByPhone(
     `)
     .eq("challenge_id", challengeId)
     .eq("phone_number", normalizedPhone)
-    .single();
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  if (error || !data) {
-    if (error?.code !== "PGRST116") {
-      // PGRST116 = no rows returned
-      console.error("Failed to fetch participation by phone:", error);
-    }
+  if (error) {
+    console.error("Failed to fetch participation by phone:", error);
+    return null;
+  }
+
+  if (!data) {
     return null;
   }
 
