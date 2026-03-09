@@ -1,9 +1,10 @@
 import * as Mixpanel from "mixpanel";
 
 // 서버 사이드 Mixpanel 클라이언트
-const mixpanel = Mixpanel.init(process.env.NEXT_PUBLIC_MIXPANEL_TOKEN || "", {
-  protocol: "https",
-});
+const token = process.env.NEXT_PUBLIC_MIXPANEL_TOKEN;
+const mixpanel = token
+  ? Mixpanel.init(token, { protocol: "https" })
+  : (null as unknown as Mixpanel.Mixpanel);
 
 // 공통 속성
 const COMMON_PROPERTIES = {
@@ -19,6 +20,7 @@ export function trackServerEvent(
   distinctId: string,
   properties?: Record<string, unknown>
 ) {
+  if (!mixpanel) return;
   try {
     mixpanel.track(eventName, {
       distinct_id: distinctId,
@@ -37,6 +39,7 @@ export function setServerUserProfile(
   distinctId: string,
   properties: Record<string, unknown>
 ) {
+  if (!mixpanel) return;
   try {
     mixpanel.people.set(distinctId, {
       ...COMMON_PROPERTIES,
