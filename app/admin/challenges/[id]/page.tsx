@@ -473,9 +473,7 @@ export default function EditChallengePage() {
     }
   };
 
-  const challengeUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/challenge/${id}`
-    : `/challenge/${id}`;
+  const challengeUrl = `https://vibe-qanda-ad-challengers.qanda.ai/challenge/${id}`;
 
   if (authChecking || loading) {
     return (
