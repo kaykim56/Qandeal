@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getSessionFromCookie } from "@/lib/supabase";
 import { getChallengeById, createChallenge, updateMissionSteps } from "@/lib/db/challenges";
 
 // POST /api/admin/challenges/clone - 챌린지 복제
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
+    const { isAdmin, user } = await getSessionFromCookie(request);
+    if (!isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -39,7 +38,7 @@ export async function POST(request: NextRequest) {
       detailImages: existing.detailImages,
       missionSteps: existing.missionSteps,
       status: "draft", // 복제본은 항상 draft로 시작
-    }, session.user?.email || "");
+    }, user?.email || "");
 
     // missionSteps 업데이트 (이미지 URL 포함)
     if (existing.missionSteps && existing.missionSteps.length > 0) {

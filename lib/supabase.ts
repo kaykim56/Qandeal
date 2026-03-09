@@ -1,4 +1,4 @@
-import { createBrowserClient } from "@supabase/ssr";
+import { createBrowserClient, createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
 
@@ -88,28 +88,28 @@ export async function getSessionFromCookie(request: Request): Promise<{
   user: { email: string } | null;
   isAdmin: boolean;
 }> {
-  const cookieHeader = request.headers.get("cookie") || "";
-  const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-    global: {
-      headers: {
-        cookie: cookieHeader,
+  // NextRequest의 cookies를 사용하여 Supabase SSR 서버 클라이언트 생성
+  const supabase = createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        const cookieHeader = request.headers.get("cookie") || "";
+        return cookieHeader.split(";").map((cookie) => {
+          const [name, ...rest] = cookie.trim().split("=");
+          return { name: name || "", value: rest.join("=") || "" };
+        }).filter((c) => c.name);
       },
     },
   });
 
-  const { data: { session }, error } = await supabase.auth.getSession();
+  const { data: { user }, error } = await supabase.auth.getUser();
 
-  if (error || !session?.user?.email) {
+  if (error || !user?.email) {
     return { user: null, isAdmin: false };
   }
 
-  const isAdmin = await isAdminUser(session.user.email);
+  const isAdmin = await isAdminUser(user.email);
   return {
-    user: { email: session.user.email },
+    user: { email: user.email },
     isAdmin,
   };
 }

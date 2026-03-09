@@ -1129,10 +1129,11 @@ export default function EditChallengePage() {
 
           {/* 챌린지 URL (게시된 경우) */}
           {form.status === "published" && (
-            <section className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <section className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-3">
+              {/* 일반 URL */}
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-green-800 mb-1">게시된 챌린지 URL</p>
+                  <p className="text-sm font-medium text-green-800 mb-1">일반 URL</p>
                   <p className="text-sm text-green-700 truncate">{challengeUrl}</p>
                 </div>
                 <button
@@ -1140,6 +1141,26 @@ export default function EditChallengePage() {
                   onClick={() => {
                     navigator.clipboard.writeText(challengeUrl);
                     alert("URL이 복사되었습니다!");
+                  }}
+                  className="flex-shrink-0 px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  복사
+                </button>
+              </div>
+              {/* 딥링크 */}
+              <div className="flex items-center justify-between gap-3 pt-2 border-t border-green-200">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-green-800 mb-1">딥링크 (앱 배너용)</p>
+                  <p className="text-xs text-green-600 truncate font-mono">
+                    {`qandadir://web?link=${encodeURIComponent(challengeUrl)}&hiddenTopNavigation=true&hiddenBottomNavigation=true&backOwner=web`}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const deepLink = `qandadir://web?link=${encodeURIComponent(challengeUrl)}&hiddenTopNavigation=true&hiddenBottomNavigation=true&backOwner=web`;
+                    navigator.clipboard.writeText(deepLink);
+                    alert("딥링크가 복사되었습니다!");
                   }}
                   className="flex-shrink-0 px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
                 >

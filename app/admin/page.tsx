@@ -3,7 +3,7 @@
 import { createBrowserSupabaseClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Plus, Edit, Trash2, ExternalLink, LogOut, Loader2, RefreshCw, ClipboardCheck, X, ChevronDown, ChevronUp, Database, Copy, Eye, EyeOff } from "lucide-react";
+import { Plus, Edit, Trash2, ExternalLink, LogOut, Loader2, RefreshCw, ClipboardCheck, X, Copy, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { Challenge } from "@/lib/types";
 import type { User } from "@supabase/supabase-js";
@@ -23,15 +23,6 @@ export default function AdminDashboard() {
     changed: number;
     changes: Array<{ title: string; oldPrice: number; newPrice: number }>;
   } | null>(null);
-
-  // 데이터 정리 관련 상태
-  const [cleanupOpen, setCleanupOpen] = useState(false);
-  const [cleanupDiagnosis, setCleanupDiagnosis] = useState<{
-    challenges: { deleted: number; draft: number; total: number };
-    participations: { duplicates: number; total: number };
-  } | null>(null);
-  const [cleanupLoading, setCleanupLoading] = useState(false);
-  const [cleaningAction, setCleaningAction] = useState<string | null>(null);
 
   // 탭에 따라 필터된 챌린지
   const filteredChallenges = challenges.filter((c) => c.status === activeTab);
@@ -235,67 +226,6 @@ export default function AdminDashboard() {
       setCheckingPrices(false);
     }
   };
-
-  // 데이터 진단 가져오기
-  const fetchCleanupDiagnosis = async () => {
-    setCleanupLoading(true);
-    try {
-      const res = await fetch("/api/admin/cleanup");
-      const data = await res.json();
-      if (data.success) {
-        setCleanupDiagnosis({
-          challenges: {
-            deleted: data.diagnosis.challenges.deleted,
-            draft: data.diagnosis.challenges.draft,
-            total: data.diagnosis.challenges.total,
-          },
-          participations: {
-            duplicates: data.diagnosis.participations.duplicates.length,
-            total: data.diagnosis.participations.total,
-          },
-        });
-      }
-    } catch (error) {
-      console.error("Cleanup diagnosis failed:", error);
-    } finally {
-      setCleanupLoading(false);
-    }
-  };
-
-  // 정리 실행
-  const runCleanup = async (action: string) => {
-    if (!confirm("정말 정리하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) return;
-
-    setCleaningAction(action);
-    try {
-      const res = await fetch("/api/admin/cleanup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert(data.message);
-        fetchCleanupDiagnosis();
-        fetchChallenges();
-      } else {
-        alert("정리 실패: " + (data.error || "알 수 없는 오류"));
-      }
-    } catch (error) {
-      console.error("Cleanup failed:", error);
-      alert("정리 실패");
-    } finally {
-      setCleaningAction(null);
-    }
-  };
-
-  // 정리 패널 열 때 진단 데이터 가져오기
-  useEffect(() => {
-    if (cleanupOpen && !cleanupDiagnosis) {
-      fetchCleanupDiagnosis();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cleanupOpen]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -677,129 +607,6 @@ export default function AdminDashboard() {
           </>
         )}
 
-        {/* 데이터 정리 섹션 */}
-        <div className="mt-6 bg-white border-t border-gray-200">
-          <button
-            onClick={() => setCleanupOpen(!cleanupOpen)}
-            className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50"
-          >
-            <div className="flex items-center gap-2">
-              <Database className="w-5 h-5 text-gray-500" />
-              <span className="font-medium text-gray-700">데이터 정리</span>
-              {cleanupDiagnosis && (cleanupDiagnosis.challenges.deleted > 0 || cleanupDiagnosis.participations.duplicates > 0) && (
-                <span className="px-2 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
-                  정리 필요
-                </span>
-              )}
-            </div>
-            {cleanupOpen ? (
-              <ChevronUp className="w-5 h-5 text-gray-400" />
-            ) : (
-              <ChevronDown className="w-5 h-5 text-gray-400" />
-            )}
-          </button>
-
-          {cleanupOpen && (
-            <div className="px-4 pb-4 border-t border-gray-100">
-              {cleanupLoading ? (
-                <div className="py-6 text-center text-gray-500">
-                  <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
-                  진단 중...
-                </div>
-              ) : cleanupDiagnosis ? (
-                <div className="pt-4 space-y-4">
-                  {/* 가이드 */}
-                  <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
-                    <p className="font-medium mb-2">어드민 & Google Sheets 관계</p>
-                    <ul className="space-y-1 text-blue-700 mb-3">
-                      <li>• 어드민은 <strong>UI</strong>이고, Google Sheets가 <strong>데이터베이스</strong> 역할을 합니다.</li>
-                      <li>• 어드민에서 생성/수정/삭제하면 시트에 자동 반영됩니다.</li>
-                      <li>• 시트를 직접 수정해도 어드민에 반영되지만, 구조가 깨질 수 있으니 주의하세요.</li>
-                    </ul>
-                    <p className="font-medium mb-2">데이터 정리</p>
-                    <ul className="space-y-1 text-blue-700">
-                      <li>• <strong>삭제된 챌린지</strong>: 어드민에서 삭제한 챌린지는 시트에서 &quot;deleted&quot; 상태로 남아있습니다. 정리하면 시트에서 완전히 제거됩니다.</li>
-                      <li>• <strong>중복 참여</strong>: 같은 유저가 같은 챌린지에 여러 번 참여 기록이 생긴 경우입니다. 정리하면 승인된 것 또는 가장 최신 기록만 남기고 나머지를 삭제합니다.</li>
-                    </ul>
-                    <a
-                      href="https://docs.google.com/spreadsheets/d/1O6yvB4qwNVARANz6JRBlThT0X5VY9UKpR4BblIo8_dk/edit?gid=0#gid=0"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200 transition-colors"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      Google Sheets 바로가기
-                    </a>
-                  </div>
-
-                  {/* 진단 결과 */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <p className="text-xs text-gray-500 mb-1">삭제된 챌린지</p>
-                      <p className="text-xl font-bold text-gray-900">{cleanupDiagnosis.challenges.deleted}</p>
-                    </div>
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <p className="text-xs text-gray-500 mb-1">중복 참여</p>
-                      <p className="text-xl font-bold text-gray-900">{cleanupDiagnosis.participations.duplicates}</p>
-                    </div>
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <p className="text-xs text-gray-500 mb-1">전체 챌린지</p>
-                      <p className="text-xl font-bold text-gray-900">{cleanupDiagnosis.challenges.total}</p>
-                    </div>
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <p className="text-xs text-gray-500 mb-1">전체 참여</p>
-                      <p className="text-xl font-bold text-gray-900">{cleanupDiagnosis.participations.total}</p>
-                    </div>
-                  </div>
-
-                  {/* 액션 버튼들 */}
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => runCleanup("remove-deleted-challenges")}
-                      disabled={cleanupDiagnosis.challenges.deleted === 0 || cleaningAction !== null}
-                      className="flex items-center gap-1.5 px-3 py-2 text-sm bg-red-50 text-red-700 rounded-lg hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {cleaningAction === "remove-deleted-challenges" ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-4 h-4" />
-                      )}
-                      삭제된 챌린지 정리
-                    </button>
-                    <button
-                      onClick={() => runCleanup("remove-duplicate-participations")}
-                      disabled={cleanupDiagnosis.participations.duplicates === 0 || cleaningAction !== null}
-                      className="flex items-center gap-1.5 px-3 py-2 text-sm bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {cleaningAction === "remove-duplicate-participations" ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-4 h-4" />
-                      )}
-                      중복 참여 정리
-                    </button>
-                    <button
-                      onClick={fetchCleanupDiagnosis}
-                      disabled={cleanupLoading}
-                      className="flex items-center gap-1.5 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50"
-                    >
-                      <RefreshCw className={`w-4 h-4 ${cleanupLoading ? "animate-spin" : ""}`} />
-                      새로고침
-                    </button>
-                  </div>
-
-                  <p className="text-xs text-gray-400">
-                    * 정리된 데이터는 복구할 수 없습니다.
-                  </p>
-                </div>
-              ) : (
-                <div className="py-6 text-center text-gray-500">
-                  진단 데이터를 불러올 수 없습니다
-                </div>
-              )}
-            </div>
-          )}
-        </div>
       </main>
     </div>
   );

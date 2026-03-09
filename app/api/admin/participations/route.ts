@@ -1,14 +1,13 @@
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { getSessionFromCookie } from "@/lib/supabase";
 import { getAllParticipations } from "@/lib/db/participations";
 import { getAllChallenges } from "@/lib/db/challenges";
 
 // GET /api/admin/participations - 모든 참여 목록 조회
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
+    const { isAdmin } = await getSessionFromCookie(request);
+    if (!isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

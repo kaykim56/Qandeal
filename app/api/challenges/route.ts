@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getSessionFromCookie } from "@/lib/supabase";
 import { getAllChallenges, createChallenge } from "@/lib/db/challenges";
 import { ChallengeInput } from "@/lib/types";
 
@@ -19,13 +18,13 @@ export async function GET() {
 // POST /api/challenges - 새 챌린지 생성
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
+    const { isAdmin, user } = await getSessionFromCookie(request);
+    if (!isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body: ChallengeInput = await request.json();
-    const createdBy = session.user?.email || "";
+    const createdBy = user?.email || "";
     const id = await createChallenge(body, createdBy);
 
     return NextResponse.json({ id }, { status: 201 });

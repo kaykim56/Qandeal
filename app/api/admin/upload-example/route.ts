@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getSessionFromCookie } from "@/lib/supabase";
 import { put } from "@vercel/blob";
 import { getKSTDateString } from "@/lib/date-utils";
 
 // POST /api/admin/upload-example - 예시 이미지 업로드
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
+    const { isAdmin } = await getSessionFromCookie(request);
+    if (!isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
