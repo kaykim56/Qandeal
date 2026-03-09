@@ -168,94 +168,94 @@ export default function VerificationsPage() {
                 <h2 className="text-sm font-medium text-gray-500 mb-3">
                   검토 가능 ({reviewable.length})
                 </h2>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {reviewable.map((p) => (
                     <div key={p.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                      {/* 이미지 2개 나란히 */}
+                      {/* 이미지 2개 나란히 - 컴팩트 */}
                       <div className="grid grid-cols-2 gap-px bg-gray-100">
                         <div
-                          className="aspect-square bg-gray-50 cursor-pointer relative group"
+                          className="aspect-[4/3] bg-gray-50 cursor-pointer relative group"
                           onClick={() => setSelectedImage(p.purchaseImageUrl)}
                         >
                           <Image
                             src={p.purchaseImageUrl}
                             alt="구매 인증"
-                            width={200}
-                            height={200}
+                            width={150}
+                            height={112}
                             className="w-full h-full object-cover"
                             loading="lazy"
                           />
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                            <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <Eye className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                           </div>
-                          <span className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 text-white text-xs rounded">
-                            구매 인증
+                          <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-black/60 text-white text-[10px] rounded">
+                            구매
                           </span>
                         </div>
                         <div
-                          className="aspect-square bg-gray-50 cursor-pointer relative group"
+                          className="aspect-[4/3] bg-gray-50 cursor-pointer relative group"
                           onClick={() => setSelectedImage(p.reviewImageUrl)}
                         >
                           <Image
                             src={p.reviewImageUrl}
                             alt="리뷰 인증"
-                            width={200}
-                            height={200}
+                            width={150}
+                            height={112}
                             className="w-full h-full object-cover"
                             loading="lazy"
                           />
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                            <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <Eye className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                           </div>
-                          <span className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 text-white text-xs rounded">
-                            리뷰 인증
+                          <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-black/60 text-white text-[10px] rounded">
+                            리뷰
                           </span>
                         </div>
                       </div>
 
                       {/* 정보 */}
-                      <div className="p-4">
+                      <div className="p-3">
                         {/* 챌린지 정보 */}
                         {p.challenge && (
-                          <div className="mb-3 pb-3 border-b border-gray-100">
-                            <span className="inline-block px-2 py-0.5 text-xs font-medium rounded bg-orange-100 text-orange-600 mb-1">
+                          <div className="mb-2 pb-2 border-b border-gray-100">
+                            <span className="inline-block px-1.5 py-0.5 text-[10px] font-medium rounded bg-orange-100 text-orange-600 mb-0.5">
                               {p.challenge.platform}
                             </span>
-                            <p className="text-sm font-medium text-gray-900 line-clamp-1">
+                            <p className="text-xs font-medium text-gray-900 line-clamp-1">
                               {p.challenge.title}
                             </p>
                           </div>
                         )}
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-500">
-                              {p.testerEmail ? p.testerEmail.split("@")[0] : `${p.userId.slice(0, 12)}...`}
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-gray-500">
+                              {p.testerEmail ? p.testerEmail.split("@")[0] : `${p.userId.slice(0, 8)}...`}
                             </span>
                             {p.testerEmail && (
-                              <span className="px-1.5 py-0.5 text-[10px] rounded bg-purple-100 text-purple-700 font-medium">
+                              <span className="px-1 py-0.5 text-[9px] rounded bg-purple-100 text-purple-700 font-medium">
                                 테스트
                               </span>
                             )}
                           </div>
                           {getStatusBadge(p.status)}
                         </div>
-                        <p className="text-xs text-gray-400 mb-3">
+                        <p className="text-[10px] text-gray-400 mb-2">
                           {formatDate(p.createdAt)}
                         </p>
 
                         {/* 액션 버튼 */}
-                        <div className="flex gap-2">
+                        <div className="flex gap-1.5">
                           {p.status !== "approved" && (
                             <button
                               onClick={() => handleUpdateStatus(p.id, "approved")}
                               disabled={updating === p.id}
-                              className="flex-1 py-2 rounded-lg bg-green-500 text-white text-sm font-medium hover:bg-green-600 disabled:opacity-50 flex items-center justify-center gap-1"
+                              className="flex-1 py-1.5 rounded-lg bg-green-500 text-white text-xs font-medium hover:bg-green-600 disabled:opacity-50 flex items-center justify-center gap-1"
                             >
                               {updating === p.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Loader2 className="w-3 h-3 animate-spin" />
                               ) : (
                                 <>
-                                  <Check className="w-4 h-4" />
+                                  <Check className="w-3 h-3" />
                                   승인
                                 </>
                               )}
@@ -265,13 +265,13 @@ export default function VerificationsPage() {
                             <button
                               onClick={() => handleUpdateStatus(p.id, "rejected")}
                               disabled={updating === p.id}
-                              className="flex-1 py-2 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 disabled:opacity-50 flex items-center justify-center gap-1"
+                              className="flex-1 py-1.5 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-600 disabled:opacity-50 flex items-center justify-center gap-1"
                             >
                               {updating === p.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Loader2 className="w-3 h-3 animate-spin" />
                               ) : (
                                 <>
-                                  <X className="w-4 h-4" />
+                                  <X className="w-3 h-3" />
                                   거절
                                 </>
                               )}
