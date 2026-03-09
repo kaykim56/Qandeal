@@ -3,7 +3,7 @@
 import { createBrowserSupabaseClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Plus, Edit, Trash2, ExternalLink, LogOut, Loader2, RefreshCw, ClipboardCheck, X, Copy, Eye, EyeOff } from "lucide-react";
+import { Plus, Edit, Trash2, ExternalLink, LogOut, Loader2, ClipboardCheck, X, Copy, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { Challenge } from "@/lib/types";
 import type { User } from "@supabase/supabase-js";
@@ -17,12 +17,6 @@ export default function AdminDashboard() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState<"draft" | "published">("published");
-  const [checkingPrices, setCheckingPrices] = useState(false);
-  const [priceCheckResult, setPriceCheckResult] = useState<{
-    checked: number;
-    changed: number;
-    changes: Array<{ title: string; oldPrice: number; newPrice: number }>;
-  } | null>(null);
 
   // 탭에 따라 필터된 챌린지
   const filteredChallenges = challenges.filter((c) => c.status === activeTab);
@@ -194,38 +188,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // 가격 체크 실행
-  const handlePriceCheck = async () => {
-    setCheckingPrices(true);
-    setPriceCheckResult(null);
-
-    try {
-      const res = await fetch("/api/cron/check-prices");
-      const data = await res.json();
-
-      if (data.success) {
-        setPriceCheckResult({
-          checked: data.checked,
-          changed: data.changed,
-          changes: data.priceChanges.map((c: { title: string; oldPrice: number; newPrice: number }) => ({
-            title: c.title,
-            oldPrice: c.oldPrice,
-            newPrice: c.newPrice,
-          })),
-        });
-
-        // 가격 변동이 있으면 목록 새로고침
-        if (data.changed > 0) {
-          fetchChallenges();
-        }
-      }
-    } catch (error) {
-      console.error("Price check failed:", error);
-      alert("가격 체크 실패");
-    } finally {
-      setCheckingPrices(false);
-    }
-  };
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -328,18 +290,6 @@ export default function AdminDashboard() {
               <ClipboardCheck className="w-4 h-4" />
               인증 검토
             </Link>
-            <button
-              onClick={handlePriceCheck}
-              disabled={checkingPrices}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-            >
-              {checkingPrices ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4" />
-              )}
-              {checkingPrices ? "체크 중..." : "가격 체크"}
-            </button>
             <Link
               href="/admin/challenges/new"
               className="flex items-center gap-1.5 px-3 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm font-medium"
@@ -350,38 +300,6 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* 가격 체크 결과 */}
-        {priceCheckResult && (
-          <div className={`mb-4 p-4 rounded-lg ${priceCheckResult.changed > 0 ? "bg-orange-50 border border-orange-200" : "bg-green-50 border border-green-200"}`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className={`font-medium ${priceCheckResult.changed > 0 ? "text-orange-800" : "text-green-800"}`}>
-                  {priceCheckResult.changed > 0
-                    ? `${priceCheckResult.changed}개 상품 가격 변동!`
-                    : "가격 변동 없음"}
-                </p>
-                <p className="text-sm text-gray-600 mt-1">
-                  {priceCheckResult.checked}개 상품 체크 완료
-                </p>
-                {priceCheckResult.changes.length > 0 && (
-                  <ul className="mt-2 text-sm text-orange-700">
-                    {priceCheckResult.changes.map((c, i) => (
-                      <li key={i}>
-                        • {c.title}: {c.oldPrice.toLocaleString()}원 → {c.newPrice.toLocaleString()}원
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              <button
-                onClick={() => setPriceCheckResult(null)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* 챌린지 리스트 */}
         {filteredChallenges.length === 0 ? (

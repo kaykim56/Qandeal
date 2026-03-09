@@ -1,4 +1,4 @@
-import { createServiceRoleClient, createServerSupabaseClient } from "../supabase";
+import { createServiceRoleClient } from "../supabase";
 import { Challenge, ChallengeInput, ChallengeWithMissions, MissionStep } from "../types";
 
 // =====================================================
@@ -92,7 +92,7 @@ function dbStepsToMissionSteps(
 // =====================================================
 
 export async function getAllChallenges(): Promise<Challenge[]> {
-  const supabase = createServerSupabaseClient();
+  const supabase = createServiceRoleClient();
 
   const { data, error } = await supabase
     .from("challenges")
