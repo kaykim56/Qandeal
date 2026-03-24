@@ -35,7 +35,7 @@ export default function CampaignTile({
 
   const handleClick = () => {
     if (unlocked) {
-      if (process.env.NODE_ENV === "development" && id.startsWith("dummy-")) {
+      if (id.startsWith("dummy-")) {
         window.location.href = "/reference-coupon.html";
       } else {
         router.push(`/challenge/${id}`);
