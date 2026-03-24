@@ -56,10 +56,8 @@ export default async function Home() {
     console.error("Failed to fetch challenges:", error);
   }
 
-  // 개발 환경에서 더미 4개 추가
-  if (process.env.NODE_ENV === "development") {
-    challenges = [...challenges, ...DUMMY_CHALLENGES];
-  }
+  // 데모용: 항상 더미 추가 (실운영 시 DUMMY_CHALLENGES와 이 블록 삭제)
+  challenges = [...challenges, ...DUMMY_CHALLENGES];
 
   return (
     <div className="h-screen bg-white flex flex-col overflow-hidden">
