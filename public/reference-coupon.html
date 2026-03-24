@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>콴딜 - 페이백 쿠폰 선택</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: #fff8f0;
+    min-height: 100vh;
+  }
+
+  /* 헤더 — 로고 이미지 */
+  .header {
+    background: #fff;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 2px solid #f0f0f0;
+    overflow: hidden;
+  }
+  .logo-img {
+    width: 280px;
+    height: auto;
+    display: block;
+  }
+
+  .container { max-width: 480px; margin: 0 auto; padding: 0 16px 100px; }
+
+  /* 안내 배너 */
+  .guide-banner {
+    margin: 20px 0 18px;
+    background: linear-gradient(135deg, #FF6B35 0%, #FF9A3C 100%);
+    border-radius: 16px;
+    padding: 18px 20px;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+  .guide-banner::before {
+    content: '🎁';
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 40px;
+    opacity: 0.3;
+  }
+  .guide-banner .step {
+    display: inline-block;
+    background: rgba(255,255,255,0.3);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+  }
+  .guide-banner h2 {
+    font-size: 17px;
+    font-weight: 900;
+    line-height: 1.4;
+  }
+  .guide-banner p {
+    font-size: 12px;
+    opacity: 0.9;
+    margin-top: 5px;
+  }
+
+  /* 섹션 타이틀 */
+  .section-title {
+    font-size: 18px;
+    font-weight: 900;
+    color: #111;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .section-title .badge {
+    background: #FF6B35;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+
+  /* 쿠폰 그리드 */
+  .coupon-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .coupon-card {
+    background: #fff;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 2.5px solid #eee;
+    cursor: pointer;
+    transition: transform 0.18s, border-color 0.18s, box-shadow 0.18s;
+    position: relative;
+  }
+  .coupon-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 28px rgba(255,107,53,0.18);
+    border-color: #FF6B35;
+  }
+  .coupon-card.selected {
+    border-color: #FF6B35;
+    box-shadow: 0 0 0 3px rgba(255,107,53,0.15);
+  }
+
+  /* 쿠폰 이미지 영역 — 통일된 규격 */
+  .coupon-img-wrap {
+    width: 100%;
+    height: 162px;
+    overflow: hidden;
+    background: #f5f5f5;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .coupon-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 6px;
+    display: block;
+  }
+
+  /* 선택 체크 */
+  .check-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    background: #FF6B35;
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    z-index: 2;
+  }
+  .coupon-card.selected .check-badge { display: flex; }
+
+  /* 쿠폰 정보 */
+  .coupon-info {
+    padding: 10px 12px 12px;
+  }
+  .coupon-category {
+    font-size: 11px;
+    color: #888;
+    margin-bottom: 2px;
+  }
+  .coupon-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #111;
+    margin-bottom: 4px;
+  }
+  .coupon-price {
+    font-size: 15px;
+    font-weight: 900;
+    color: #FF6B35;
+  }
+
+  /* CTA 버튼 */
+  .cta-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    padding: 12px 16px;
+    background: #fff;
+    border-top: 1px solid #f0f0f0;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  .cta-btn {
+    width: 100%;
+    padding: 17px;
+    background: #FF6B35;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 900;
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .cta-btn:active { transform: scale(0.98); background: #e55a25; }
+
+  /* 오버레이 팝업 */
+  .popup-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.82);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    animation: fadeIn 0.25s ease;
+  }
+  .popup-overlay.hidden { display: none; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .popup-card {
+    background: #fff;
+    border-radius: 24px;
+    max-width: 370px;
+    width: 100%;
+    overflow: hidden;
+    animation: slideUp 0.3s ease;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3), 0 0 80px rgba(255,180,50,0.15);
+  }
+
+  .popup-top {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
+    padding: 32px 24px 28px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .popup-top::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(ellipse at center, rgba(255,200,50,0.12) 0%, transparent 60%);
+    animation: shimmer 3s ease-in-out infinite;
+  }
+  @keyframes shimmer {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.1); }
+  }
+
+  .popup-ticket {
+    position: relative;
+    z-index: 1;
+    width: 160px;
+    height: 100px;
+    margin: 0 auto 16px;
+    background: linear-gradient(135deg, #FFD700 0%, #FFC107 30%, #FFB300 50%, #FFA000 70%, #FFD700 100%);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 32px rgba(255,193,7,0.4), inset 0 1px 0 rgba(255,255,255,0.5);
+    border: 2px solid rgba(255,255,255,0.3);
+  }
+  .popup-ticket::before,
+  .popup-ticket::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background: #1a1a2e;
+    border-radius: 50%;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  .popup-ticket::before { left: -12px; }
+  .popup-ticket::after { right: -12px; }
+
+  .popup-ticket-inner {
+    border: 1.5px dashed rgba(139,101,8,0.4);
+    border-radius: 8px;
+    padding: 10px 24px;
+    text-align: center;
+  }
+  .popup-ticket-icon {
+    font-size: 32px;
+    display: block;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+  }
+  .popup-ticket-label {
+    font-size: 11px;
+    font-weight: 900;
+    color: #7a5a00;
+    letter-spacing: 2px;
+    margin-top: 2px;
+  }
+
+  .popup-sparkles {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .popup-sparkles span {
+    position: absolute;
+    font-size: 14px;
+    animation: sparkle 2s ease-in-out infinite;
+  }
+  .popup-sparkles span:nth-child(1) { top: 12%; left: 10%; animation-delay: 0s; }
+  .popup-sparkles span:nth-child(2) { top: 18%; right: 12%; animation-delay: 0.5s; }
+  .popup-sparkles span:nth-child(3) { bottom: 15%; left: 15%; animation-delay: 1s; }
+  .popup-sparkles span:nth-child(4) { bottom: 20%; right: 10%; animation-delay: 1.5s; }
+  .popup-sparkles span:nth-child(5) { top: 45%; left: 5%; animation-delay: 0.7s; font-size: 10px; }
+  .popup-sparkles span:nth-child(6) { top: 40%; right: 6%; animation-delay: 1.2s; font-size: 10px; }
+  @keyframes sparkle {
+    0%, 100% { opacity: 0.3; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.2); }
+  }
+
+  .popup-top h3 {
+    position: relative;
+    z-index: 1;
+    color: #fff;
+    font-size: 17px;
+    font-weight: 900;
+    line-height: 1.55;
+    text-shadow: 0 1px 8px rgba(0,0,0,0.3);
+  }
+
+  .popup-body {
+    padding: 22px 24px 24px;
+    text-align: center;
+  }
+  .popup-steps {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .popup-step {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: #666;
+    font-weight: 700;
+  }
+  .popup-step .num {
+    width: 20px;
+    height: 20px;
+    background: #FF6B35;
+    color: #fff;
+    border-radius: 50%;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+  }
+  .popup-step .arrow {
+    color: #ccc;
+    font-size: 10px;
+  }
+
+  .popup-close-btn {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, #FF6B35 0%, #FF9A3C 100%);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 900;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.1s;
+    letter-spacing: 0.3px;
+  }
+  .popup-close-btn:active { transform: scale(0.97); }
+</style>
+</head>
+<body>
+
+<!-- 오버레이 팝업 -->
+<div class="popup-overlay" id="popupOverlay">
+  <div class="popup-card">
+    <div class="popup-top">
+      <div class="popup-sparkles">
+        <span>✦</span><span>✦</span><span>✦</span>
+        <span>✦</span><span>✦</span><span>✦</span>
+      </div>
+      <div class="popup-ticket">
+        <div class="popup-ticket-inner">
+          <span class="popup-ticket-icon">🎟️</span>
+          <div class="popup-ticket-label">GOLD COUPON</div>
+        </div>
+      </div>
+      <h3>페이백 원하는 쿠폰을 선택하고<br>인증을 완료하면 쿠폰이 지급 돼요.</h3>
+    </div>
+    <div class="popup-body">
+      <div class="popup-steps">
+        <div class="popup-step"><span class="num">1</span> 쿠폰 선택</div>
+        <span class="popup-step arrow">→</span>
+        <div class="popup-step"><span class="num">2</span> 인증 완료</div>
+        <span class="popup-step arrow">→</span>
+        <div class="popup-step"><span class="num">3</span> 쿠폰 지급</div>
+      </div>
+      <button class="popup-close-btn" onclick="closePopup()">확인했어요!</button>
+    </div>
+  </div>
+</div>
+
+<div class="header">
+  <img src="/콴딜_로고_배경제거.png" alt="콴딜 로고" class="logo-img">
+</div>
+
+<div class="container">
+
+  <!-- 안내 배너 -->
+  <div class="guide-banner">
+    <div class="step">STEP 1</div>
+    <h2>원하는 쿠폰을 선택하세요</h2>
+    <p>인증 완료 후 선택한 쿠폰으로 바로 지급돼요</p>
+  </div>
+
+  <!-- 쿠폰 목록 -->
+  <div class="section-title">
+    🎟️ 페이백 쿠폰 <span class="badge">6종</span>
+  </div>
+
+  <div class="coupon-grid">
+
+    <div class="coupon-card selected" onclick="toggleSelect(this)">
+      <div class="check-badge">✓</div>
+      <div class="coupon-img-wrap">
+        <img src="/coupon_1.png" alt="GS25 상품권">
+      </div>
+      <div class="coupon-info">
+        <div class="coupon-category">편의점</div>
+        <div class="coupon-name">GS25</div>
+      </div>
+    </div>
+
+    <div class="coupon-card" onclick="toggleSelect(this)">
+      <div class="check-badge">✓</div>
+      <div class="coupon-img-wrap">
+        <img src="/coupon_2.png" alt="세븐일레븐 상품권">
+      </div>
+      <div class="coupon-info">
+        <div class="coupon-category">편의점</div>
+        <div class="coupon-name">세븐일레븐</div>
+      </div>
+    </div>
+
+    <div class="coupon-card" onclick="toggleSelect(this)">
+      <div class="check-badge">✓</div>
+      <div class="coupon-img-wrap">
+        <img src="/coupon_3.png" alt="다이소 상품권">
+      </div>
+      <div class="coupon-info">
+        <div class="coupon-category">생활용품</div>
+        <div class="coupon-name">다이소</div>
+      </div>
+    </div>
+
+    <div class="coupon-card" onclick="toggleSelect(this)">
+      <div class="check-badge">✓</div>
+      <div class="coupon-img-wrap">
+        <img src="/coupon_4.png" alt="네이버페이 상품권">
+      </div>
+      <div class="coupon-info">
+        <div class="coupon-category">간편결제</div>
+        <div class="coupon-name">네이버페이</div>
+      </div>
+    </div>
+
+    <div class="coupon-card" onclick="toggleSelect(this)">
+      <div class="check-badge">✓</div>
+      <div class="coupon-img-wrap">
+        <img src="/coupon_5.png" alt="올리브영 상품권">
+      </div>
+      <div class="coupon-info">
+        <div class="coupon-category">뷰티</div>
+        <div class="coupon-name">올리브영</div>
+      </div>
+    </div>
+
+    <div class="coupon-card" onclick="toggleSelect(this)">
+      <div class="check-badge">✓</div>
+      <div class="coupon-img-wrap">
+        <img src="/coupon_6.png" alt="배달의민족 상품권">
+      </div>
+      <div class="coupon-info">
+        <div class="coupon-category">배달앱</div>
+        <div class="coupon-name">배달의민족</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="cta-bar">
+  <button class="cta-btn">이 쿠폰으로 참가하기 →</button>
+</div>
+
+<script>
+  function toggleSelect(card) {
+    document.querySelectorAll('.coupon-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+  }
+  function closePopup() {
+    document.getElementById('popupOverlay').classList.add('hidden');
+  }
+</script>
+</body>
+</html>
