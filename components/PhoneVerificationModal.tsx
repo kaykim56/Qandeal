@@ -403,7 +403,7 @@ export default function PhoneVerificationModal({
               </div>
             </div>
 
-            {/* 득템딜 이용약관 (필수) */}
+            {/* 콴딜 이용약관 (필수) */}
             <div className="flex items-center justify-between pl-1">
               <div
                 className="flex items-center gap-2 cursor-pointer"
@@ -418,7 +418,7 @@ export default function PhoneVerificationModal({
                 >
                   {termsAgreed && <Check className="w-2.5 h-2.5 text-white" />}
                 </div>
-                <span className="text-xs text-gray-500">(필수) 득템딜 이용약관 동의</span>
+                <span className="text-xs text-gray-500">(필수) 콴딜 이용약관 동의</span>
               </div>
               <button
                 type="button"

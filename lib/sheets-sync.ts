@@ -10,18 +10,25 @@ const ADMIN_SHEET_ID = process.env.GOOGLE_ADMIN_SHEET_ID!;
 
 // Google Sheets 인증
 function getAuth() {
+  const serviceEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   let privateKey = process.env.GOOGLE_PRIVATE_KEY || "";
 
-  // \n 문자열을 실제 줄바꿈으로 변환 (두 가지 케이스 모두 처리)
-  if (privateKey.includes("\\n")) {
-    privateKey = privateKey.replace(/\\n/g, "\n");
+  // 서비스 계정 키가 있으면 서비스 계정 인증, 없으면 ADC(Application Default Credentials) 사용
+  if (serviceEmail && privateKey && !privateKey.includes("...")) {
+    if (privateKey.includes("\\n")) {
+      privateKey = privateKey.replace(/\\n/g, "\n");
+    }
+    return new google.auth.GoogleAuth({
+      credentials: {
+        client_email: serviceEmail,
+        private_key: privateKey,
+      },
+      scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+    });
   }
 
+  // ADC 사용 (gcloud auth application-default login)
   return new google.auth.GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: privateKey,
-    },
     scopes: ["https://www.googleapis.com/auth/spreadsheets"],
   });
 }
@@ -35,7 +42,7 @@ function getSheets() {
 // 탭 자동 생성
 // =====================================================
 
-const TAB_NAMES = ["통합", "검수", "운영 대시보드"] as const;
+const TAB_NAMES = ["챌린지 DB", "통합", "검수", "운영 대시보드"] as const;
 
 async function ensureTabsExist(sheets: sheets_v4.Sheets): Promise<void> {
   // 현재 시트 정보 조회
@@ -225,8 +232,171 @@ function formatDateTime(isoString: string | null): string {
 }
 
 // =====================================================
+// Supabase에서 챌린지 데이터 조회
+// =====================================================
+
+interface ChallengeData {
+  id: string;
+  shortId: string;
+  platform: string;
+  title: string;
+  option: string;
+  originalPrice: number;
+  paybackRate: number;
+  paybackAmount: number;
+  finalPrice: number;
+  productImage: string;
+  productLink: string;
+  status: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  purchaseDeadline: string;
+  reviewDeadline: string;
+  missionSteps: Array<{
+    stepOrder: number;
+    title: string;
+    description: string;
+    deadline: string;
+  }>;
+}
+
+async function fetchChallengeData(): Promise<ChallengeData[]> {
+  const supabase = createServiceRoleClient();
+
+  const { data: challenges, error: challengesError } = await supabase
+    .from("challenges")
+    .select("*")
+    .neq("status", "deleted")
+    .order("created_at", { ascending: false });
+
+  if (challengesError) {
+    console.error("Failed to fetch challenges:", challengesError);
+    throw challengesError;
+  }
+
+  const { data: allSteps, error: stepsError } = await supabase
+    .from("mission_steps")
+    .select("challenge_id, step_order, title, description, deadline")
+    .order("step_order", { ascending: true });
+
+  if (stepsError) {
+    console.error("Failed to fetch mission_steps:", stepsError);
+    throw stepsError;
+  }
+
+  // 미션 스텝 맵 생성
+  const stepMap = new Map<string, Array<{ stepOrder: number; title: string; description: string; deadline: string }>>();
+  for (const step of allSteps || []) {
+    if (!step.challenge_id) continue;
+    if (!stepMap.has(step.challenge_id)) {
+      stepMap.set(step.challenge_id, []);
+    }
+    stepMap.get(step.challenge_id)!.push({
+      stepOrder: step.step_order,
+      title: step.title,
+      description: step.description || "",
+      deadline: step.deadline || "",
+    });
+  }
+
+  return (challenges || []).map((c) => ({
+    id: c.id,
+    shortId: c.short_id || c.id.substring(0, 8),
+    platform: c.platform,
+    title: c.title,
+    option: c.option || "",
+    originalPrice: c.original_price,
+    paybackRate: c.payback_rate,
+    paybackAmount: c.payback_amount,
+    finalPrice: c.final_price,
+    productImage: c.product_image || "",
+    productLink: c.product_link || "",
+    status: c.status,
+    createdBy: c.created_by || "",
+    createdAt: c.created_at,
+    updatedAt: c.updated_at,
+    purchaseDeadline: c.purchase_deadline || "",
+    reviewDeadline: c.review_deadline || "",
+    missionSteps: stepMap.get(c.id) || [],
+  }));
+}
+
+// =====================================================
 // 시트 탭 동기화
 // =====================================================
+
+// 탭 0: "챌린지 DB" (챌린지 + 미션 스텝 데이터)
+async function syncChallengeDbTab(
+  sheets: sheets_v4.Sheets,
+  data: ChallengeData[]
+): Promise<number> {
+  const headers = [
+    "ID",
+    "ShortID",
+    "플랫폼",
+    "챌린지명",
+    "옵션",
+    "원가",
+    "페이백률(%)",
+    "페이백금액",
+    "최종가",
+    "상품이미지",
+    "상품링크",
+    "상태",
+    "생성자",
+    "생성일시",
+    "수정일시",
+    "스텝1_이름",
+    "스텝1_기한",
+    "스텝2_이름",
+    "스텝2_기한",
+    "스텝3_이름",
+    "스텝3_기한",
+    "스텝4_이름",
+    "스텝4_기한",
+  ];
+
+  const rows = data.map((c) => {
+    const row: (string | number)[] = [
+      c.id,
+      c.shortId,
+      c.platform,
+      c.title,
+      c.option,
+      c.originalPrice,
+      c.paybackRate,
+      c.paybackAmount,
+      c.finalPrice,
+      c.productImage,
+      c.productLink,
+      c.status,
+      c.createdBy,
+      formatDateTime(c.createdAt),
+      formatDateTime(c.updatedAt),
+    ];
+
+    // 스텝 1~4
+    for (let i = 0; i < 4; i++) {
+      const step = c.missionSteps[i];
+      row.push(step?.title || "");
+      row.push(step?.deadline ? formatDateTime(step.deadline) : "");
+    }
+
+    return row;
+  });
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: ADMIN_SHEET_ID,
+    range: "챌린지 DB!A1",
+    valueInputOption: "USER_ENTERED",
+    requestBody: {
+      values: [headers, ...rows],
+    },
+  });
+
+  return rows.length;
+}
 
 // 탭 1: "통합" (원본 데이터)
 async function syncIntegrationTab(
@@ -453,6 +623,7 @@ export interface SyncResult {
   success: boolean;
   syncedRows: number;
   tabs: {
+    challengeDb: number;
     integration: number;
     review: number;
     dashboard: number;
@@ -466,8 +637,11 @@ export async function syncToSheets(): Promise<SyncResult> {
 
   try {
     // 1. Supabase에서 데이터 조회
-    const data = await fetchSyncData();
-    console.log(`[syncToSheets] Fetched ${data.length} participations`);
+    const [participationData, challengeData] = await Promise.all([
+      fetchSyncData(),
+      fetchChallengeData(),
+    ]);
+    console.log(`[syncToSheets] Fetched ${challengeData.length} challenges, ${participationData.length} participations`);
 
     // 2. Google Sheets 클라이언트 생성
     const sheets = getSheets();
@@ -476,16 +650,18 @@ export async function syncToSheets(): Promise<SyncResult> {
     await ensureTabsExist(sheets);
 
     // 4. 각 탭에 데이터 쓰기
-    const integrationCount = await syncIntegrationTab(sheets, data);
-    const reviewCount = await syncReviewTab(sheets, data);
-    const dashboardCount = await syncDashboardTab(sheets, data);
+    const challengeDbCount = await syncChallengeDbTab(sheets, challengeData);
+    const integrationCount = await syncIntegrationTab(sheets, participationData);
+    const reviewCount = await syncReviewTab(sheets, participationData);
+    const dashboardCount = await syncDashboardTab(sheets, participationData);
 
-    console.log(`[syncToSheets] Synced - 통합: ${integrationCount}, 검수: ${reviewCount}, 대시보드: ${dashboardCount}`);
+    console.log(`[syncToSheets] Synced - 챌린지DB: ${challengeDbCount}, 통합: ${integrationCount}, 검수: ${reviewCount}, 대시보드: ${dashboardCount}`);
 
     return {
       success: true,
-      syncedRows: data.length,
+      syncedRows: participationData.length,
       tabs: {
+        challengeDb: challengeDbCount,
         integration: integrationCount,
         review: reviewCount,
         dashboard: dashboardCount,
@@ -498,6 +674,7 @@ export async function syncToSheets(): Promise<SyncResult> {
       success: false,
       syncedRows: 0,
       tabs: {
+        challengeDb: 0,
         integration: 0,
         review: 0,
         dashboard: 0,

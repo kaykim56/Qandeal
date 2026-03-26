@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromCookie } from "@/lib/supabase";
 import { getChallengeById, updateChallenge, deleteChallenge } from "@/lib/db/challenges";
+import { syncToSheets } from "@/lib/sheets-sync";
 
 // GET /api/challenges/[id] - 특정 챌린지 조회
 export async function GET(
@@ -46,6 +47,11 @@ export async function PUT(
       return NextResponse.json({ error: "Challenge not found" }, { status: 404 });
     }
 
+    // Google Sheets에도 동기화 (실패해도 Supabase 수정은 유지)
+    syncToSheets().catch((err) =>
+      console.error("[challenges] Google Sheets 수정 동기화 실패:", err)
+    );
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Failed to update challenge:", error);
@@ -70,6 +76,11 @@ export async function DELETE(
     if (!success) {
       return NextResponse.json({ error: "Challenge not found" }, { status: 404 });
     }
+
+    // Google Sheets에서도 동기화 (실패해도 Supabase 삭제는 유지)
+    syncToSheets().catch((err) =>
+      console.error("[challenges] Google Sheets 삭제 동기화 실패:", err)
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {

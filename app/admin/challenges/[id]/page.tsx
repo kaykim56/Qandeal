@@ -51,6 +51,7 @@ export default function EditChallengePage() {
         description: "",
         exampleImages: [] as string[],
         deadline: "",
+        deadlineStart: "",
       },
       {
         order: 2,
@@ -58,6 +59,7 @@ export default function EditChallengePage() {
         description: "",
         exampleImages: [] as string[],
         deadline: "",
+        deadlineStart: "",
       },
     ] as MissionStep[],
   });
@@ -128,10 +130,28 @@ export default function EditChallengePage() {
         }
       };
 
-      // missionSteps 변환 (deadline을 date 형식으로)
+      // datetime-local 형식으로 변환 (ISO -> YYYY-MM-DDTHH:mm)
+      const formatDateTimeLocal = (isoString: string | undefined) => {
+        if (!isoString) return "";
+        try {
+          const date = new Date(isoString);
+          // datetime-local은 로컬 시간으로 표시해야 함
+          const y = date.getFullYear();
+          const m = String(date.getMonth() + 1).padStart(2, "0");
+          const d = String(date.getDate()).padStart(2, "0");
+          const h = String(date.getHours()).padStart(2, "0");
+          const min = String(date.getMinutes()).padStart(2, "0");
+          return `${y}-${m}-${d}T${h}:${min}`;
+        } catch {
+          return "";
+        }
+      };
+
+      // missionSteps 변환 (deadline을 datetime-local 형식으로)
       const formattedSteps = (data.missionSteps || []).map((step) => ({
         ...step,
-        deadline: formatDate(step.deadline),
+        deadline: formatDateTimeLocal(step.deadline) || formatDate(step.deadline),
+        deadlineStart: formatDateTimeLocal(step.deadlineStart) || "",
       }));
 
       // 하위 호환: productPrice가 없으면 originalPrice 사용
@@ -231,6 +251,7 @@ export default function EditChallengePage() {
       description: "",
       exampleImages: [],
       deadline: "",
+      deadlineStart: "",
     };
     setForm({
       ...form,
@@ -377,7 +398,8 @@ export default function EditChallengePage() {
       const step = form.missionSteps[i];
       if (!step.title.trim()) return { field: `step-${i}-title`, message: `스텝 ${i + 1}의 제목을 입력해주세요` };
       if (!step.description.trim()) return { field: `step-${i}-description`, message: `스텝 ${i + 1}의 설명을 입력해주세요` };
-      if (!step.deadline) return { field: `step-${i}-deadline`, message: `스텝 ${i + 1}의 기한을 입력해주세요` };
+      if (!step.deadlineStart) return { field: `step-${i}-deadlineStart`, message: `스텝 ${i + 1}의 시작일시를 입력해주세요` };
+      if (!step.deadline) return { field: `step-${i}-deadline`, message: `스텝 ${i + 1}의 종료일시를 입력해주세요` };
     }
     if (!form.productPrice || form.productPrice <= 0) return { field: "productPrice", message: "상품가를 입력해주세요" };
     if (!form.paybackAmount || form.paybackAmount <= 0) return { field: "paybackAmount", message: "페이백 금액을 입력해주세요" };
@@ -838,11 +860,23 @@ export default function EditChallengePage() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        기한 *
+                        시작일시 *
+                      </label>
+                      <input
+                        id={`step-${index}-deadlineStart`}
+                        type="datetime-local"
+                        value={step.deadlineStart || ""}
+                        onChange={(e) => updateMissionStep(index, "deadlineStart", e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        종료일시 *
                       </label>
                       <input
                         id={`step-${index}-deadline`}
-                        type="date"
+                        type="datetime-local"
                         value={step.deadline}
                         onChange={(e) => updateMissionStep(index, "deadline", e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"

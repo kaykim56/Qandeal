@@ -1096,7 +1096,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
             href={challenge.productLink ? `/api/redirect?url=${encodeURIComponent(challenge.productLink)}` : "#"}
             target="_blank"
             className="flex-1 py-3.5 rounded-xl text-sm font-semibold text-white transition-colors text-center"
-            style={{ backgroundColor: "#3b82f6" }}
+            style={{ backgroundColor: "#1A1A1A" }}
           >
             제품 바로가기
           </Link>

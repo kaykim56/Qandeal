@@ -3,44 +3,12 @@ import { Challenge } from "@/lib/types";
 import CampaignTile from "@/components/CampaignTile";
 
 const CHARACTER_DATA = [
-  { image: "/char_nabi.png", bg: "#FFF0E6", name: "나비", motion: "char-bounce" },
-  { image: "/char_brody.png", bg: "#E6F9F1", name: "브로디", motion: "char-float" },
-  { image: "/char_jazz.png", bg: "#F0E6FF", name: "째즈", motion: "char-wobble" },
-  { image: "/char_q.png", bg: "#FFF3E0", name: "큐", motion: "char-nod" },
-  { image: "/char_tapi.png", bg: "#E6EEFF", name: "타피", motion: "char-sway" },
-  { image: "/char_peak.png", bg: "#F0F0F0", name: "피크", motion: "char-breathe" },
-];
-
-// 개발 환경 전용 더미 데이터 (항상 4개 추가)
-const DUMMY_CHALLENGES: Challenge[] = [
-  {
-    id: "dummy-1", platform: "쿠팡", title: "[더미] 샘플 상품 A",
-    option: "", originalPrice: 15000, paybackRate: 80, paybackAmount: 12000,
-    finalPrice: 3000, productImage: "", productLink: "", detailImages: [],
-    missionSteps: [], status: "published", createdAt: "", updatedAt: "",
-    purchaseDeadline: "", reviewDeadline: "",
-  },
-  {
-    id: "dummy-2", platform: "스마트스토어", title: "[더미] 샘플 상품 B",
-    option: "", originalPrice: 22000, paybackRate: 85, paybackAmount: 18700,
-    finalPrice: 3300, productImage: "", productLink: "", detailImages: [],
-    missionSteps: [], status: "published", createdAt: "", updatedAt: "",
-    purchaseDeadline: "", reviewDeadline: "",
-  },
-  {
-    id: "dummy-3", platform: "올리브영", title: "[더미] 샘플 상품 C",
-    option: "", originalPrice: 19800, paybackRate: 80, paybackAmount: 15840,
-    finalPrice: 3960, productImage: "", productLink: "", detailImages: [],
-    missionSteps: [], status: "published", createdAt: "", updatedAt: "",
-    purchaseDeadline: "", reviewDeadline: "",
-  },
-  {
-    id: "dummy-4", platform: "카카오쇼핑", title: "[더미] 샘플 상품 D",
-    option: "", originalPrice: 25000, paybackRate: 85, paybackAmount: 21250,
-    finalPrice: 3750, productImage: "", productLink: "", detailImages: [],
-    missionSteps: [], status: "published", createdAt: "", updatedAt: "",
-    purchaseDeadline: "", reviewDeadline: "",
-  },
+  { image: "/friend_star.png", bg: "#FFF8E1", name: "스타", motion: "char-bounce" },
+  { image: "/friend_purple.png", bg: "#F3E5F5", name: "보라", motion: "char-float" },
+  { image: "/friend_red.png", bg: "#FFEBEE", name: "빨강", motion: "char-wobble" },
+  { image: "/friend_orange.png", bg: "#FFF3E0", name: "주황", motion: "char-nod" },
+  { image: "/friend_green.png", bg: "#E8F5E9", name: "초록", motion: "char-sway" },
+  { image: "/friend_blue.png", bg: "#E3F2FD", name: "파랑", motion: "char-breathe" },
 ];
 
 // 페이지를 항상 동적으로 렌더링 (캐시 비활성화)
@@ -56,13 +24,11 @@ export default async function Home() {
     console.error("Failed to fetch challenges:", error);
   }
 
-  // 데모용: 항상 더미 추가 (실운영 시 DUMMY_CHALLENGES와 이 블록 삭제)
-  challenges = [...challenges, ...DUMMY_CHALLENGES];
 
   return (
     <div className="h-screen bg-white flex flex-col overflow-hidden">
       {/* 헤더 — sticky 상단 고정 */}
-      <header className="shrink-0 h-[80px] flex items-center justify-center border-b border-[#e0e0e0] overflow-hidden bg-white">
+      <header className="shrink-0 h-[48px] flex items-center justify-center overflow-hidden bg-white">
         <img
           src="/콴딜_로고_배경제거.png"
           alt="콴딜 로고"
@@ -72,10 +38,10 @@ export default async function Home() {
 
       {/* 액션 버튼 — sticky 상단 고정 */}
       <div className="shrink-0 grid grid-cols-2 gap-[10px] px-4 py-[14px] bg-white">
-        <button className="relative flex items-center justify-center gap-[7px] py-[11px] rounded-[14px] border-[1.5px] border-[#e0e0e0] bg-white text-[14px] font-semibold text-[#111] cursor-pointer">
-          🛒 참여중인 딜
+        <button className="flex items-center justify-center gap-[7px] py-[11px] rounded-[14px] border-[1.5px] border-[#e0e0e0] bg-white text-[14px] font-semibold text-[#111] cursor-pointer">
+          🛒 참여중
           {challenges.length > 0 && (
-            <span className="absolute -top-[6px] right-[calc(50%-32px)] bg-[#ff6b1a] text-white text-[11px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+            <span className="bg-[#ff6b1a] text-white text-[11px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
               {challenges.length}
             </span>
           )}

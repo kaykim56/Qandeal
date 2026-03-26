@@ -67,6 +67,21 @@ function dbToChallenge(
   };
 }
 
+// description 필드에 [DS:시작일시] 태그로 deadlineStart를 저장
+function parseDeadlineStartFromDesc(desc: string | null): { description: string; deadlineStart: string } {
+  if (!desc) return { description: "", deadlineStart: "" };
+  const match = desc.match(/^\[DS:([^\]]+)\]/);
+  if (match) {
+    return { description: desc.replace(match[0], ""), deadlineStart: match[1] };
+  }
+  return { description: desc, deadlineStart: "" };
+}
+
+function encodeDeadlineStartToDesc(desc: string, deadlineStart?: string): string {
+  if (!deadlineStart) return desc;
+  return `[DS:${deadlineStart}]${desc}`;
+}
+
 function dbStepsToMissionSteps(
   steps: Array<{
     step_order: number;
@@ -78,13 +93,17 @@ function dbStepsToMissionSteps(
 ): MissionStep[] {
   return steps
     .sort((a, b) => a.step_order - b.step_order)
-    .map((step) => ({
-      order: step.step_order,
-      title: step.title,
-      description: step.description || "",
-      exampleImages: Array.isArray(step.example_images) ? (step.example_images as string[]) : [],
-      deadline: step.deadline || "",
-    }));
+    .map((step) => {
+      const { description, deadlineStart } = parseDeadlineStartFromDesc(step.description);
+      return {
+        order: step.step_order,
+        title: step.title,
+        description,
+        exampleImages: Array.isArray(step.example_images) ? (step.example_images as string[]) : [],
+        deadline: step.deadline || "",
+        deadlineStart,
+      };
+    });
 }
 
 // =====================================================
@@ -193,7 +212,7 @@ export async function createChallenge(input: ChallengeInput, createdBy?: string)
         challenge_id: challenge.id,
         step_order: step.order,
         title: step.title,
-        description: step.description || null,
+        description: encodeDeadlineStartToDesc(step.description || "", step.deadlineStart),
         example_images: step.exampleImages || [],
         deadline: step.deadline || null,
       }))
@@ -295,7 +314,7 @@ export async function updateMissionSteps(challengeId: string, steps: MissionStep
         challenge_id: challengeId,
         step_order: step.order,
         title: step.title,
-        description: step.description || null,
+        description: encodeDeadlineStartToDesc(step.description || "", step.deadlineStart),
         example_images: step.exampleImages || [],
         deadline: step.deadline || null,
       }))

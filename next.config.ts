@@ -15,6 +15,14 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "shop-phinf.pstatic.net",
       },
+      {
+        protocol: "https",
+        hostname: "*.kakaocdn.net",
+      },
+      {
+        protocol: "http",
+        hostname: "*.kakaocdn.net",
+      },
     ],
   },
 };

@@ -211,7 +211,7 @@ export default function AdminDashboard() {
       {/* 헤더 */}
       <header className="bg-white shadow-sm">
         <div className="px-4 sm:px-6 h-14 lg:h-16 flex items-center justify-between">
-          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 whitespace-nowrap">득템 어드민</h1>
+          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 whitespace-nowrap">콴딜 어드민</h1>
 
           {/* 모바일: 로그아웃 아이콘만 */}
           <button

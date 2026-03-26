@@ -6,7 +6,8 @@ export interface MissionStep {
   title: string;
   description: string;
   exampleImages: string[]; // 예시 이미지 (여러 개 가능)
-  deadline: string; // ISO datetime
+  deadline: string; // 종료일 (ISO date 또는 datetime)
+  deadlineStart?: string; // 시작일 (ISO date 또는 datetime)
 }
 
 export interface Challenge {

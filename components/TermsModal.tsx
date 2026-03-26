@@ -17,7 +17,7 @@ export default function TermsModal({ isOpen, onClose, onAgree, type, challengeId
   if (!isOpen) return null;
 
   const titleMap = {
-    terms_of_service: "득템딜 이용약관",
+    terms_of_service: "콴딜 이용약관",
     privacy_collection: "개인정보 수집∙이용 동의",
     privacy_third_party: "개인정보 제3자 제공 동의",
     marketing: "마케팅 정보 수신 동의",

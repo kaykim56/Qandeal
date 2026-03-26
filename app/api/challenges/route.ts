@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromCookie } from "@/lib/supabase";
 import { getAllChallenges, createChallenge } from "@/lib/db/challenges";
+import { syncToSheets } from "@/lib/sheets-sync";
 import { ChallengeInput } from "@/lib/types";
 
 // GET /api/challenges - 모든 챌린지 조회
@@ -26,6 +27,11 @@ export async function POST(request: NextRequest) {
     const body: ChallengeInput = await request.json();
     const createdBy = user?.email || "";
     const id = await createChallenge(body, createdBy);
+
+    // Google Sheets에도 동기화 (실패해도 Supabase 생성은 유지)
+    syncToSheets().catch((err) =>
+      console.error("[challenges] Google Sheets 동기화 실패:", err)
+    );
 
     return NextResponse.json({ id }, { status: 201 });
   } catch (error) {

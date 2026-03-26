@@ -130,6 +130,16 @@ body {
   50%  { transform: scale(1.06); }
 }
 
+/* ── 프렌즈 전체 살짝 점프 ── */
+.friends-hop {
+  animation: friends-hop 2.5s ease-in-out infinite;
+}
+@keyframes friends-hop {
+  0%, 100% { transform: translateY(0); }
+  15%  { transform: translateY(-8px); }
+  30%  { transform: translateY(0); }
+}
+
 /* ── 잠금해제 ripple 애니메이션 ── */
 @keyframes unlock-ripple {
   0%   { transform: scale(0.95); opacity: 0.7; }
@@ -139,4 +149,25 @@ body {
 
 .unlock-animate {
   animation: unlock-ripple 0.3s ease-out;
+}
+
+/* ── 쿠폰 팝업 애니메이션 ── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+@keyframes sparkle {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
 }
