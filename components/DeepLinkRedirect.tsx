@@ -11,6 +11,9 @@ export default function DeepLinkRedirect({ challengeId }: DeepLinkRedirectProps)
     // 클라이언트 사이드에서만 실행
     if (typeof window === "undefined") return;
 
+    // 환경변수로 딥링크 비활성화 제어
+    if (process.env.NEXT_PUBLIC_ENABLE_DEEPLINK !== "true") return;
+
     const userAgent = navigator.userAgent;
 
     // 모바일 기기 감지
