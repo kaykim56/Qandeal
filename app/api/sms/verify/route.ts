@@ -78,6 +78,19 @@ export async function POST(request: Request) {
 
     const normalizedPhone = phoneNumber.replace(/-/g, "");
 
+    // 개발 환경에서는 111111 입력 시 바로 인증 통과
+    if (process.env.NODE_ENV === "development" && code === "111111") {
+      console.log(`[DEV] 개발모드 인증 통과: ${normalizedPhone}`);
+      const verificationToken = generateVerificationToken(phoneNumber);
+      const formattedPhone = formatPhoneNumber(phoneNumber);
+      return NextResponse.json({
+        success: true,
+        message: "인증이 완료되었습니다. (개발모드)",
+        verificationToken,
+        phoneNumber: formattedPhone,
+      });
+    }
+
     // 저장된 코드로 검증 (Supabase)
     const result = await verifyCode(phoneNumber, code);
 

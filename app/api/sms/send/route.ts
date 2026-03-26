@@ -77,6 +77,16 @@ export async function POST(request: Request) {
     const code = generateCode();
     await saveCode(phoneNumber, code);
 
+    // 개발 환경에서는 Twilio 없이 고정 코드 사용
+    if (process.env.NODE_ENV === "development") {
+      console.log(`[DEV] SMS 인증코드: 111111 (${formatPhoneNumber(phoneNumber)}) - dev 모드에서는 111111 입력`);
+      await saveCode(phoneNumber, "111111"); // 고정 코드로 덮어쓰기
+      return NextResponse.json({
+        success: true,
+        message: "인증번호가 발송되었습니다. (개발모드: 111111 입력)",
+      });
+    }
+
     // Twilio로 SMS 발송
     console.log("[SMS] Sending to:", normalizedPhone);
 
@@ -91,16 +101,6 @@ export async function POST(request: Request) {
     } catch (twilioError: unknown) {
       const errorMessage = twilioError instanceof Error ? twilioError.message : JSON.stringify(twilioError);
       console.error("Twilio 발송 오류:", errorMessage);
-
-      // 개발 환경에서는 콘솔에 코드 출력
-      if (process.env.NODE_ENV === "development") {
-        console.log(`[DEV] SMS 인증코드: ${code} (${formatPhoneNumber(phoneNumber)})`);
-        return NextResponse.json({
-          success: true,
-          message: "인증번호가 발송되었습니다.",
-          devCode: code,
-        });
-      }
 
       return NextResponse.json(
         { error: `SMS 발송에 실패했습니다: ${errorMessage}` },

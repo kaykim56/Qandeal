@@ -48,13 +48,17 @@ function formatDeadline(dateString: string): string {
   }
 }
 
-// 날짜 범위 포맷팅 (deadline 하루 전 ~ deadline)
-function formatDeadlineRange(endDateString: string): string {
+// 날짜 범위 포맷팅 (deadlineStart ~ deadline)
+function formatDeadlineRange(endDateString: string, startDateString?: string): string {
   if (!endDateString) return "";
   try {
     const endDate = new Date(endDateString);
-    const startDate = new Date(endDate);
-    startDate.setDate(startDate.getDate() - 1);
+    const startDate = startDateString ? new Date(startDateString) : (() => {
+      // 하위 호환: startDate 없으면 기존처럼 하루 전
+      const d = new Date(endDate);
+      d.setDate(d.getDate() - 1);
+      return d;
+    })();
 
     const startMonth = startDate.getMonth() + 1;
     const startDay = startDate.getDate();
@@ -103,7 +107,7 @@ interface CanVerifyResult {
   reason?: string;
 }
 
-function canVerifyStep(step: { title: string; deadline?: string }): CanVerifyResult {
+function canVerifyStep(step: { title: string; deadline?: string; deadlineStart?: string }): CanVerifyResult {
   if (!step.deadline) {
     return { canVerify: true };
   }
@@ -122,12 +126,13 @@ function canVerifyStep(step: { title: string; deadline?: string }): CanVerifyRes
       return { canVerify: false, reason: "인증 기한이 지났습니다" };
     }
   } else {
-    // 일반 스텝 (구매 인증 등): deadline 하루 전부터 deadline까지 가능
-    const deadlineStart = new Date(deadlineDate);
-    deadlineStart.setDate(deadlineStart.getDate() - 1);
+    // 일반 스텝 (구매 인증 등): deadlineStart부터 deadline까지 가능
+    const deadlineStart = step.deadlineStart
+      ? new Date(new Date(step.deadlineStart).getFullYear(), new Date(step.deadlineStart).getMonth(), new Date(step.deadlineStart).getDate())
+      : (() => { const d = new Date(deadlineDate); d.setDate(d.getDate() - 1); return d; })();
 
     if (today < deadlineStart) {
-      return { canVerify: false, reason: `${formatDeadlineRange(step.deadline)}에 인증 가능합니다` };
+      return { canVerify: false, reason: `${formatDeadlineRange(step.deadline, step.deadlineStart)}에 인증 가능합니다` };
     }
     if (today > deadlineDate) {
       return { canVerify: false, reason: "인증 기한이 지났습니다" };
@@ -213,6 +218,44 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
       hasTrackedView.current = true;
     }
   }, [challenge.id, challenge.title, challenge.shortId]);
+  // 카운트다운용 현재 시각 (클라이언트에서만 갱신 - hydration 에러 방지)
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
+  useEffect(() => {
+    setCurrentTime(new Date());
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // 종료일 포맷: ~M/DD
+  const formatStepEndDate = (deadline: string) => {
+    const date = new Date(deadline);
+    return `~${date.getMonth() + 1}/${date.getDate()}`;
+  };
+
+  // D-1(24시간 이내)일 때만 시간 표시, 그 외에는 null 반환
+  const formatCountdown = (deadline: string): string | null => {
+    if (!currentTime) return null;
+    const end = new Date(deadline);
+    const diff = end.getTime() - currentTime.getTime();
+    if (diff <= 0) return "마감";
+    if (diff > 24 * 60 * 60 * 1000) return null;
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    const hh = String(hours).padStart(2, "0");
+    const mm = String(minutes).padStart(2, "0");
+    const ss = String(seconds).padStart(2, "0");
+    return `${hh}:${mm}:${ss}`;
+  };
+
+  // 환급 예정일: 마지막 스텝 종료일 + 14일 → ~M/DD
+  const getPaybackDateStr = (lastDeadline?: string) => {
+    if (!lastDeadline) return "";
+    const date = new Date(lastDeadline);
+    date.setDate(date.getDate() + 14);
+    return `~${date.getMonth() + 1}/${date.getDate()}`;
+  };
+
   const [hasParticipated, setHasParticipated] = useState(false);
   const [participationId, setParticipationId] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -298,7 +341,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
     missionSteps.map((ms) => {
       const verifyResult = canVerifyStep(ms);
       return {
-        title: ms.title.replace(/ /g, "\n"), // 공백을 줄바꿈으로
+        title: ms.title.replace("찜하기 인증하기", "찜❤️").replace("구매 인증하기", "구매").replace("구매확정 하기", "구매확정").replace("구매확정 인증하기", "구매확정").replace("리뷰 인증하기", "리뷰"),
         status: "pending" as const,
         imageUrl: undefined,
         imageUrls: [],
@@ -335,39 +378,25 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
     localStorage.setItem("userId", userId);
   }
 
-  // JWT userId가 없으면 전화번호 확인 필요
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (qandaUser?.userId) return; // JWT userId 있으면 확인 불필요
-
-    // 테스트용 챌린지는 전화번호 확인 건너뛰기
-    const testChallengeIds = ["f4b3edb4-baa7-427b-814a-9d7ed5a542f4"];
-    if (testChallengeIds.includes(challenge.id)) return;
-
-    const isQandaWebView = /QANDA|Mathpresso/i.test(navigator.userAgent);
-    const isKakaoWebView = /KAKAOTALK/i.test(navigator.userAgent);
-
-    if (isQandaWebView) {
-      // 콴다 앱 웹뷰 - 바로 전화번호 확인
-      setIsBlurred(true);
-      setShowPhoneCheck(true);
-    } else if (isKakaoWebView) {
-      // 카카오톡 웹뷰 - 딥링크 시도 후 전화번호 확인 (딥링크 실패 시에만)
-      // 딥링크가 성공하면 페이지가 콴다 앱으로 넘어가서 이 콜백이 실행 안 됨
-      const timer = setTimeout(() => {
-        setIsBlurred(true);
-        setShowPhoneCheck(true);
-      }, 1500);
-      return () => clearTimeout(timer);
-    } else {
-      // 기타 브라우저 - 딥링크 시도 후 전화번호 확인
-      const timer = setTimeout(() => {
-        setIsBlurred(true);
-        setShowPhoneCheck(true);
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [qandaUser, challenge.id]);
+  // TODO: 전화번호 인증 로직 - 적절한 시점에 다시 활성화 예정
+  // useEffect(() => {
+  //   if (typeof window === "undefined") return;
+  //   if (qandaUser?.userId) return;
+  //   const testChallengeIds = ["f4b3edb4-baa7-427b-814a-9d7ed5a542f4"];
+  //   if (testChallengeIds.includes(challenge.id)) return;
+  //   const isQandaWebView = /QANDA|Mathpresso/i.test(navigator.userAgent);
+  //   const isKakaoWebView = /KAKAOTALK/i.test(navigator.userAgent);
+  //   if (isQandaWebView) {
+  //     setIsBlurred(true);
+  //     setShowPhoneCheck(true);
+  //   } else if (isKakaoWebView) {
+  //     const timer = setTimeout(() => { setIsBlurred(true); setShowPhoneCheck(true); }, 1500);
+  //     return () => clearTimeout(timer);
+  //   } else {
+  //     const timer = setTimeout(() => { setIsBlurred(true); setShowPhoneCheck(true); }, 1000);
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, [qandaUser, challenge.id]);
 
   // 참여 상태 복원 헬퍼 함수
   const restoreParticipationState = (p: Participation) => {
@@ -379,7 +408,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
     const newSteps: Step[] = missionSteps.map((ms) => {
       const verifyResult = canVerifyStep(ms);
       return {
-        title: ms.title.replace(/ /g, "\n"),
+        title: ms.title.replace("찜하기 인증하기", "찜❤️").replace("구매 인증하기", "구매").replace("구매확정 하기", "구매확정").replace("구매확정 인증하기", "구매확정").replace("리뷰 인증하기", "리뷰"),
         status: "pending" as const,
         imageUrl: undefined,
         imageUrls: [],
@@ -617,7 +646,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
           missionSteps.map((ms) => {
             const verifyResult = canVerifyStep(ms);
             return {
-              title: ms.title.replace(/ /g, "\n"),
+              title: ms.title.replace("찜하기 인증하기", "찜❤️").replace("구매 인증하기", "구매").replace("구매확정 하기", "구매확정").replace("구매확정 인증하기", "구매확정").replace("리뷰 인증하기", "리뷰"),
               status: "pending" as const,
               imageUrl: undefined,
               imageUrls: [],
@@ -737,7 +766,7 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
                 <span className="font-bold" style={{ color: "#cc4400" }}>구매 시간</span>
               </div>
               <span className="font-bold text-lg" style={{ color: "#cc4400" }}>
-                {formatDeadlineRange(missionSteps[0]?.deadline || challenge.purchaseDeadline)}
+                {formatDeadlineRange(missionSteps[0]?.deadline || challenge.purchaseDeadline, missionSteps[0]?.deadlineStart)}
               </span>
             </div>
             <p className="text-xs text-gray-500 mb-3 text-center">
@@ -931,18 +960,38 @@ export default function ChallengeContent({ challenge }: ChallengeContentProps) {
             {missionSteps.map((step, index) => (
               <div key={index}>
                 <div className="flex gap-3">
-                  <span
-                    className="flex-shrink-0 w-6 h-6 rounded-full text-white text-xs font-bold flex items-center justify-center"
-                    style={{ backgroundColor: "#ff6600" }}
-                  >
-                    {index + 2}
-                  </span>
+                  <div className="flex-shrink-0 flex flex-col items-center">
+                    <span
+                      className="w-6 h-6 rounded-full text-white text-xs font-bold flex items-center justify-center"
+                      style={{ backgroundColor: "#ff6600" }}
+                    >
+                      {index + 2}
+                    </span>
+                    {step.deadline && (
+                      <div className="flex flex-col items-center mt-1 gap-0.5">
+                        <span
+                          className="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                          style={{ backgroundColor: "#fff4e5", color: "#ff6600", fontFamily: "'Jua', sans-serif" }}
+                        >
+                          {formatStepEndDate(step.deadline)}
+                        </span>
+                        {formatCountdown(step.deadline) && (
+                          <span
+                            className="text-[9px] font-medium"
+                            style={{ color: "#ff6600", fontFamily: "'Jua', sans-serif" }}
+                          >
+                            {formatCountdown(step.deadline)}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
-                      <p className="font-medium text-gray-900">{step.title}</p>
+                      <p className="font-medium text-gray-900" style={{ fontFamily: "'Jua', sans-serif" }}>{step.title.replace("찜하기 인증하기", "찜❤️").replace("구매 인증하기", "구매").replace("구매확정 하기", "구매확정").replace("구매확정 인증하기", "구매확정").replace("리뷰 인증하기", "리뷰")}</p>
                       {step.deadline && (
                         <span className="text-xs text-orange-500">
-                          {(step.title.includes("리뷰") || step.title.includes("구매확정")) ? formatDeadline(step.deadline) : formatDeadlineRange(step.deadline)}
+                          {(step.title.includes("리뷰") || step.title.includes("구매확정")) ? formatDeadline(step.deadline) : formatDeadlineRange(step.deadline, step.deadlineStart)}
                         </span>
                       )}
                     </div>
